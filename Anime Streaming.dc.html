@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0b0b0c;color:#ececee;font-family:Sora,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:oklch(0.82 0.13 155);text-decoration:none}
+a:hover{color:oklch(0.9 0.1 155)}
+input,button{font-family:inherit}
+button{cursor:pointer}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#26262b;border-radius:8px}
+@keyframes pop{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes slidein{from{transform:translateX(100%)}to{transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#0b0b0c">
+
+<sc-if value="{{ isAuth }}" hint-placeholder-val="{{ false }}">
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px">
+  <div style="width:100%;max-width:380px">
+    <div style="display:flex;align-items:baseline;gap:2px;font-size:22px;font-weight:600;letter-spacing:-0.02em;margin-bottom:34px;justify-content:center">
+      ani<span style="color:oklch(0.82 0.14 155)">.</span><span style="font-weight:300;color:#8b8b93">stream</span>
+    </div>
+    <h1 style="margin:0 0 6px;font-size:22px;font-weight:600;letter-spacing:-0.02em">{{ authTitle }}</h1>
+    <p style="margin:0 0 26px;font-size:13.5px;color:#7a7a82">Private instance · Firebase Authentication</p>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <sc-if value="{{ isRegister }}" hint-placeholder-val="{{ false }}">
+        <label style="display:flex;flex-direction:column;gap:7px">
+          <span style="font-size:12px;color:#8b8b93">Display name</span>
+          <input value="{{ name }}" onChange="{{ onName }}" placeholder="Ivan" style="padding:11px 13px;background:#151517;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ececee;font-size:14px;outline:none"></input>
+        </label>
+      </sc-if>
+      <label style="display:flex;flex-direction:column;gap:7px">
+        <span style="font-size:12px;color:#8b8b93">Email</span>
+        <input value="{{ email }}" onChange="{{ onEmail }}" type="email" placeholder="you@example.com" style="padding:11px 13px;background:#151517;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ececee;font-size:14px;outline:none"></input>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:7px">
+        <span style="font-size:12px;color:#8b8b93">Password</span>
+        <input value="{{ pass }}" onChange="{{ onPass }}" type="password" placeholder="••••••••" style="padding:11px 13px;background:#151517;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ececee;font-size:14px;outline:none"></input>
+      </label>
+      <button onClick="{{ submitAuth }}" style="margin-top:8px;padding:12px;border:none;border-radius:10px;background:oklch(0.84 0.14 155);color:#08110c;font-size:14px;font-weight:600" style-hover="background:oklch(0.9 0.13 155)">{{ authCta }}</button>
+      <button onClick="{{ toggleAuth }}" style="padding:8px;background:none;border:none;color:#8b8b93;font-size:13px" style-hover="color:#ececee">{{ authSwitch }}</button>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ showChrome }}" hint-placeholder-val="{{ true }}">
+<div style="min-height:100vh;display:flex;flex-direction:column">
+
+  <header style="position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:16px;padding:14px clamp(16px,4vw,40px);background:rgba(11,11,12,0.82);backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,0.07)">
+    <button onClick="{{ goHome }}" style="display:flex;align-items:baseline;gap:2px;background:none;border:none;padding:0;color:#ececee;font-size:20px;font-weight:600;letter-spacing:-0.02em">
+      ani<span style="color:oklch(0.82 0.14 155)">.</span><span style="font-weight:300;color:#8b8b93">stream</span>
+    </button>
+
+    <div style="flex:1;display:flex;justify-content:center;min-width:0">
+      <sc-if value="{{ isSearch }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:10px;width:100%;max-width:520px;padding:9px 12px;background:#151517;border:1px solid rgba(255,255,255,0.2);border-radius:10px">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" style="flex:none"><circle cx="7" cy="7" r="5" stroke="#9a9aa2" stroke-width="1.6"></circle><line x1="10.8" y1="10.8" x2="14" y2="14" stroke="#9a9aa2" stroke-width="1.6" stroke-linecap="round"></line></svg>
+          <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="Search anime…" autoFocus="{{ true }}" style="flex:1;min-width:0;background:none;border:none;outline:none;color:#ececee;font-size:14px"></input>
+          <button onClick="{{ clearQuery }}" style="background:none;border:none;color:#61616a;font-size:17px;line-height:1;padding:0 2px" style-hover="color:#c9c9cf">×</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{ notSearch }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ goSearch }}" style="display:flex;align-items:center;gap:10px;width:100%;max-width:460px;padding:9px 12px;background:#151517;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#77777f;font-size:14px;text-align:left" style-hover="border-color:rgba(255,255,255,0.18);background:#191a1c">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" style="flex:none"><circle cx="7" cy="7" r="5" stroke="#61616a" stroke-width="1.6"></circle><line x1="10.8" y1="10.8" x2="14" y2="14" stroke="#61616a" stroke-width="1.6" stroke-linecap="round"></line></svg>
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Search anime…</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#5c5c64;border:1px solid rgba(255,255,255,0.1);border-radius:5px;padding:1px 6px">/</span>
+        </button>
+      </sc-if>
+    </div>
+
+    <div style="position:relative;flex:none">
+      <button onClick="{{ toggleProfile }}" style="width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,0.14);background:linear-gradient(150deg,#2c3a33,#1a1c1b);color:oklch(0.86 0.11 155);font-size:13px;font-weight:600;letter-spacing:0.02em">IV</button>
+      <sc-if value="{{ profileOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;top:46px;right:0;width:248px;padding:16px;background:#151517;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 24px 48px rgba(0,0,0,0.55);animation:pop .16s ease-out">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(150deg,#2c3a33,#1a1c1b);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;color:oklch(0.86 0.11 155);font-size:14px;font-weight:600">IV</div>
+            <div style="min-width:0">
+              <div style="font-size:14px;font-weight:500">ivanivamar</div>
+              <div style="font-size:12px;color:#7d7d85;overflow:hidden;text-overflow:ellipsis">ivan@example.com</div>
+            </div>
+          </div>
+          <div style="height:1px;background:rgba(255,255,255,0.08);margin:14px -16px"></div>
+          <button onClick="{{ logout }}" style="width:100%;padding:9px;background:transparent;border:1px solid rgba(255,255,255,0.12);border-radius:9px;color:#d8d8dc;font-size:13px" style-hover="background:rgba(255,90,90,0.1);border-color:rgba(255,120,120,0.35);color:#ff9d9d">Log out</button>
+        </div>
+      </sc-if>
+    </div>
+  </header>
+
+  <main style="flex:1;padding:clamp(24px,4vw,44px) clamp(16px,4vw,40px) 80px;max-width:1360px;width:100%;margin:0 auto">
+
+    <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+      <div style="animation:fade .2s ease-out">
+        <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:22px">
+          <h1 style="margin:0;font-size:clamp(22px,3vw,30px);font-weight:600;letter-spacing:-0.025em">Favourites</h1>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#61616a">{{ favCount }} saved</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:{{ gridCols }};gap:clamp(14px,2vw,22px)">
+          <sc-for list="{{ favItems }}" as="a" hint-placeholder-count="6">
+            <button onClick="{{ a.open }}" style="display:flex;flex-direction:column;gap:10px;background:none;border:none;padding:0;text-align:left;color:#ececee" style-hover="opacity:0.86">
+              <div style="aspect-ratio:2/3;border-radius:12px;background:{{ a.color }};border:1px solid rgba(255,255,255,0.07);position:relative;overflow:hidden">
+                <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,0.06),rgba(0,0,0,0.35))"></div>
+                <div style="position:absolute;left:12px;bottom:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.68)">{{ a.epsLabel }}</div>
+                <sc-if value="{{ a.hasProg }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(0,0,0,0.45)">
+                    <div style="height:100%;background:oklch(0.84 0.14 155);width:{{ a.progWidth }}"></div>
+                  </div>
+                </sc-if>
+              </div>
+              <div>
+                <div style="font-size:14px;font-weight:500;line-height:1.35;text-wrap:pretty">{{ a.title }}</div>
+                <div style="font-size:12px;color:#7a7a82;margin-top:3px">{{ a.meta }}</div>
+              </div>
+            </button>
+          </sc-for>
+        </div>
+
+        <div style="margin-top:56px">
+          <h2 style="margin:0 0 14px;font-size:14px;font-weight:500;color:#8b8b93;letter-spacing:0.04em;text-transform:uppercase">Recently searched</h2>
+          <div style="display:flex;flex-wrap:wrap;gap:10px">
+            <sc-for list="{{ recent }}" as="r" hint-placeholder-count="4">
+              <button onClick="{{ r.open }}" style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:#151517;border:1px solid rgba(255,255,255,0.08);border-radius:999px;color:#c9c9cf;font-size:13px" style-hover="border-color:rgba(255,255,255,0.2);color:#fff">
+                <span style="font-family:'JetBrains Mono',monospace;color:#5c5c64;font-size:11px">›</span>{{ r.term }}
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isSearch }}" hint-placeholder-val="{{ false }}">
+      <div style="animation:fade .2s ease-out">
+        <div style="display:flex;flex-wrap:wrap;gap:22px 32px;padding-bottom:20px;border-bottom:1px solid rgba(255,255,255,0.07)">
+          <sc-for list="{{ filters }}" as="f" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:#5c5c64">{{ f.label }}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ f.opts }}" as="o" hint-placeholder-count="3">
+                  <button onClick="{{ o.select }}" style="padding:6px 13px;border-radius:999px;border:1px solid {{ o.border }};background:{{ o.bg }};color:{{ o.fg }};font-size:12.5px;font-weight:500" style-hover="border-color:rgba(255,255,255,0.28)">{{ o.name }}</button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ cliHints }}" hint-placeholder-val="{{ true }}">
+          <div style="margin:16px 0 30px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#54545c;overflow-x:auto;white-space:nowrap">{{ cliLine }}</div>
+        </sc-if>
+
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:18px">
+          <h2 style="margin:0;font-size:15px;font-weight:500;color:#c9c9cf">Results</h2>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#61616a">{{ resultCount }}</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:{{ gridCols }};gap:clamp(14px,2vw,22px)">
+          <sc-for list="{{ results }}" as="a" hint-placeholder-count="8">
+            <button onClick="{{ a.open }}" style="display:flex;flex-direction:column;gap:10px;background:none;border:none;padding:0;text-align:left;color:#ececee" style-hover="opacity:0.86">
+              <div style="aspect-ratio:2/3;border-radius:12px;background:{{ a.color }};border:1px solid rgba(255,255,255,0.07);position:relative;overflow:hidden">
+                <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,0.06),rgba(0,0,0,0.35))"></div>
+                <div style="position:absolute;left:12px;bottom:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.68)">{{ a.epsLabel }}</div>
+                <sc-if value="{{ a.hasProg }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(0,0,0,0.45)">
+                    <div style="height:100%;background:oklch(0.84 0.14 155);width:{{ a.progWidth }}"></div>
+                  </div>
+                </sc-if>
+              </div>
+              <div>
+                <div style="font-size:14px;font-weight:500;line-height:1.35;text-wrap:pretty">{{ a.title }}</div>
+                <div style="font-size:12px;color:#7a7a82;margin-top:3px">{{ a.meta }}</div>
+              </div>
+            </button>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:60px 0;text-align:center;color:#61616a;font-size:14px">No titles matched.<div style="font-family:'JetBrains Mono',monospace;font-size:12px;margin-top:8px;color:#45454c">try a shorter query</div></div>
+        </sc-if>
+
+        <sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:560px;margin:40px auto;padding:26px;background:#151517;border:1px solid rgba(255,140,140,0.22);border-radius:14px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+              <span style="width:8px;height:8px;border-radius:50%;background:#ff7a7a;flex:none"></span>
+              <h3 style="margin:0;font-size:15px;font-weight:600">Source unavailable</h3>
+            </div>
+            <p style="margin:0 0 14px;font-size:13.5px;line-height:1.6;color:#a5a5ad;text-wrap:pretty">ani-cli could not reach allanime. This is a problem with the upstream source, not with your query — the site may be down, blocking requests, or its page structure may have changed.</p>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#6c6c74;background:#0e0e10;border:1px solid rgba(255,255,255,0.07);border-radius:9px;padding:11px 13px;margin-bottom:18px;overflow-x:auto;white-space:pre">exit 1 · allanime: no results returned
+hint: ani-cli -U to update the scraper</div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px">
+              <button onClick="{{ retry }}" style="padding:10px 18px;border:none;border-radius:9px;background:oklch(0.84 0.14 155);color:#08110c;font-size:13.5px;font-weight:600" style-hover="background:oklch(0.9 0.13 155)">Retry</button>
+              <button onClick="{{ goHome }}" style="padding:10px 18px;border:1px solid rgba(255,255,255,0.14);border-radius:9px;background:transparent;color:#d8d8dc;font-size:13.5px" style-hover="border-color:rgba(255,255,255,0.28)">Back to favourites</button>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isAnime }}" hint-placeholder-val="{{ false }}">
+      <div style="animation:fade .2s ease-out">
+        <button onClick="{{ goBackList }}" style="display:flex;align-items:center;gap:8px;background:none;border:none;padding:0;margin-bottom:26px;color:#8b8b93;font-size:13px" style-hover="color:#ececee">
+          <span style="font-family:'JetBrains Mono',monospace">←</span> Back
+        </button>
+
+        <div style="display:flex;flex-wrap:wrap;gap:clamp(20px,3vw,36px);margin-bottom:48px">
+          <div style="width:clamp(150px,26vw,216px);aspect-ratio:2/3;border-radius:14px;background:{{ cur.color }};border:1px solid rgba(255,255,255,0.08);position:relative;overflow:hidden;flex:none">
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,0.07),rgba(0,0,0,0.35))"></div>
+          </div>
+          <div style="flex:1;min-width:260px">
+            <h1 style="margin:0 0 12px;font-size:clamp(26px,4vw,40px);font-weight:600;letter-spacing:-0.03em;line-height:1.1;text-wrap:pretty">{{ cur.title }}</h1>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:18px;font-size:13px;color:#8b8b93">
+              <span>{{ cur.year }}</span><span style="color:#3a3a40">•</span><span>{{ cur.status }}</span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
+              <sc-for list="{{ cur.genres }}" as="g" hint-placeholder-count="3">
+                <span style="padding:5px 11px;border:1px solid rgba(255,255,255,0.1);border-radius:999px;font-size:12px;color:#a5a5ad">{{ g }}</span>
+              </sc-for>
+            </div>
+            <p style="margin:0 0 26px;max-width:64ch;font-size:14.5px;line-height:1.65;color:#a5a5ad;text-wrap:pretty">{{ cur.synopsis }}</p>
+            <div style="display:flex;flex-wrap:wrap;gap:12px">
+              <button onClick="{{ playResume }}" style="padding:11px 22px;border:none;border-radius:10px;background:oklch(0.84 0.14 155);color:#08110c;font-size:14px;font-weight:600" style-hover="background:oklch(0.9 0.13 155)">{{ resumeLabel }}</button>
+              <button onClick="{{ toggleFav }}" style="padding:11px 20px;border:1px solid {{ favBorder }};border-radius:10px;background:transparent;color:{{ favColor }};font-size:14px;font-weight:500" style-hover="border-color:rgba(255,255,255,0.28)">{{ favLabel }}</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px">
+          <sc-for list="{{ seasonTabs }}" as="s" hint-placeholder-count="3">
+            <button onClick="{{ s.select }}" style="padding:9px 18px;border-radius:999px;background:{{ s.bg }};border:1px solid {{ s.border }};color:{{ s.fg }};font-size:13.5px;font-weight:500;white-space:nowrap" style-hover="border-color:rgba(255,255,255,0.28)">{{ s.name }}</button>
+          </sc-for>
+        </div>
+
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#5c5c64;margin:-14px 0 20px">{{ seasonNote }}</div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px">
+          <sc-for list="{{ episodes }}" as="e" hint-placeholder-count="8">
+            <button onClick="{{ e.play }}" style="display:flex;align-items:center;gap:13px;padding:10px;background:#131315;border:1px solid rgba(255,255,255,0.06);border-radius:11px;text-align:left;color:#ececee" style-hover="background:#191a1d;border-color:rgba(255,255,255,0.14)">
+              <div style="width:38px;height:38px;border-radius:8px;background:{{ e.color }};flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;color:{{ e.numFg }}">{{ e.numLabel }}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13.5px;font-weight:500">{{ e.title }}</div>
+                <sc-if value="{{ e.hasProg }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:7px;height:3px;border-radius:3px;background:rgba(255,255,255,0.12)">
+                    <div style="height:100%;border-radius:3px;background:oklch(0.84 0.14 155);width:{{ e.progWidth }}"></div>
+                  </div>
+                </sc-if>
+              </div>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+  </main>
+</div>
+</sc-if>
+
+<sc-if value="{{ isPlayer }}" hint-placeholder-val="{{ false }}">
+  <div style="position:relative;height:100vh;width:100%;background:#000;overflow:hidden;animation:fade .2s ease-out">
+
+    <div style="position:absolute;inset:0;background:{{ cur.videoBg }}"></div>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.1em;color:rgba(255,255,255,0.22)">VIDEO STREAM</div>
+    <button onClick="{{ togglePlay }}" style="position:absolute;inset:0;background:transparent;border:none"></button>
+
+    <div style="position:absolute;left:0;right:0;bottom:132px;display:flex;justify-content:center;padding:0 8vw;pointer-events:none">
+      <div style="text-align:center;color:#fff;font-size:clamp(16px,2.2vw,26px);font-weight:500;line-height:1.4;text-shadow:0 2px 6px rgba(0,0,0,0.9),0 0 2px rgba(0,0,0,0.9);text-wrap:pretty">{{ subLine }}</div>
+    </div>
+
+    <div style="position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:14px;padding:18px clamp(16px,3vw,28px);background:linear-gradient(180deg,rgba(0,0,0,0.75),transparent)">
+      <button onClick="{{ leavePlayer }}" style="width:34px;height:34px;flex:none;border-radius:9px;border:1px solid rgba(255,255,255,0.16);background:rgba(0,0,0,0.35);color:#fff;font-family:'JetBrains Mono',monospace;font-size:14px" style-hover="background:rgba(255,255,255,0.14)">←</button>
+      <div style="min-width:0">
+        <div style="font-size:14.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff">{{ playerTitle }}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:2px">{{ playerSub }}</div>
+      </div>
+    </div>
+
+    <div style="position:absolute;left:0;right:0;bottom:0;padding:52px clamp(16px,3vw,28px) 22px;background:linear-gradient(0deg,rgba(0,0,0,0.85),transparent)">
+      <div onClick="{{ seek }}" style="position:relative;height:16px;display:flex;align-items:center;cursor:pointer;margin-bottom:12px">
+        <div style="height:4px;width:100%;border-radius:4px;background:rgba(255,255,255,0.2)"></div>
+        <div style="position:absolute;left:0;height:4px;border-radius:4px;background:oklch(0.84 0.14 155);width:{{ pct }}%"></div>
+        <div style="position:absolute;width:12px;height:12px;border-radius:50%;background:#fff;left:{{ pct }}%;margin-left:-6px"></div>
+      </div>
+
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px">
+        <button onClick="{{ togglePlay }}" style="width:40px;height:40px;flex:none;border-radius:10px;border:none;background:#fff;color:#000;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">{{ playGlyph }}</button>
+        <button onClick="{{ back10 }}" title="Back 10s" style="width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.06)" style-hover="background:rgba(255,255,255,0.16)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M11 6V2L5.5 6L11 10V6.6" fill="#fff"></path><path d="M11 4.5a7.5 7.5 0 1 1-7.1 5.1" stroke="#fff" stroke-width="1.7" stroke-linecap="round" fill="none"></path><text x="12" y="16.5" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7.5" fill="#fff">10</text></svg>
+        </button>
+        <button onClick="{{ fwd10 }}" title="Forward 10s" style="width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.06)" style-hover="background:rgba(255,255,255,0.16)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M13 6V2L18.5 6L13 10V6.6" fill="#fff"></path><path d="M13 4.5a7.5 7.5 0 1 0 7.1 5.1" stroke="#fff" stroke-width="1.7" stroke-linecap="round" fill="none"></path><text x="12" y="16.5" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7.5" fill="#fff">10</text></svg>
+        </button>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,0.7);margin-left:4px;white-space:nowrap">{{ timeLabel }}</div>
+        <div style="flex:1;min-width:8px"></div>
+        <button onClick="{{ nextEp }}" title="Next episode" style="width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.06)" style-hover="background:rgba(255,255,255,0.16)">
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none"><path d="M3 3L13 10L3 17V3Z" fill="#fff"></path><rect x="15" y="3" width="2.6" height="14" rx="1" fill="#fff"></rect></svg>
+        </button>
+        <button onClick="{{ toggleDrawer }}" title="Episodes" style="width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.06)" style-hover="background:rgba(255,255,255,0.16)">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="12" height="2" rx="1" fill="#fff"></rect><rect x="2" y="9" width="12" height="2" rx="1" fill="#fff"></rect><rect x="2" y="14" width="8" height="2" rx="1" fill="#fff"></rect><path d="M14.5 13.2L18.5 15.6L14.5 18V13.2Z" fill="#fff"></path></svg>
+        </button>
+        <button onClick="{{ toggleFs }}" title="{{ fsLabel }}" style="width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.06)" style-hover="background:rgba(255,255,255,0.16)">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="{{ fsPath }}"></path></svg>
+        </button>
+      </div>
+    </div>
+
+    <sc-if value="{{ drawerOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;top:0;right:0;bottom:0;width:min(360px,86vw);background:rgba(14,14,16,0.97);border-left:1px solid rgba(255,255,255,0.1);display:flex;flex-direction:column;animation:slidein .2s ease-out">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 18px 14px;border-bottom:1px solid rgba(255,255,255,0.08)">
+          <div style="font-size:14px;font-weight:500">{{ seasonName }}</div>
+          <button onClick="{{ toggleDrawer }}" style="background:none;border:none;color:#8b8b93;font-size:19px;line-height:1" style-hover="color:#fff">×</button>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{ episodes }}" as="e" hint-placeholder-count="8">
+            <button onClick="{{ e.play }}" style="display:flex;align-items:center;gap:12px;padding:8px;background:{{ e.rowBg }};border:none;border-radius:10px;text-align:left;color:#ececee" style-hover="background:rgba(255,255,255,0.07)">
+              <div style="width:34px;height:34px;border-radius:7px;background:{{ e.color }};flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,0.85)">{{ e.numLabel }}</div>
+              <div style="flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.title }}</div>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;sourceState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Online&quot;,&quot;Source error&quot;],&quot;default&quot;:&quot;Online&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;showCliHints&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Comfortable&quot;,&quot;Compact&quot;],&quot;default&quot;:&quot;Comfortable&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Layout&quot;}}">
+/* ani-cli/allanime returns titles + episode counts only.
+   Cover colors, synopsis, genres, year and status are placeholders for
+   AniList or Jikan metadata (see ani-cli-notes.md). */
+const CATALOG = [
+  {id:'aot', title:'Attack on Titan', color:'#3d3a34', year:'2013', status:'Finished', genres:['Action','Drama','Fantasy'],
+   synopsis:'Humanity lives caged behind enormous walls, hiding from the giant humanoids that devour them. When the outermost wall is breached, a young recruit joins the corps that fights back.',
+   seasons:['Season 1','Season 2','Season 3','Final Season']},
+  {id:'fma', title:'Fullmetal Alchemist: Brotherhood', color:'#3a3128', year:'2009', status:'Finished', genres:['Adventure','Fantasy'],
+   synopsis:'Two brothers break the laws of alchemy trying to bring back their mother, and pay for it with their bodies. Their search for restoration leads them into a nation-sized conspiracy.',
+   seasons:['Season 1','Season 2']},
+  {id:'mob', title:'Mob Psycho 100', color:'#2e3a3c', year:'2016', status:'Finished', genres:['Action','Comedy','Supernatural'],
+   synopsis:'A middle schooler with overwhelming psychic power just wants to be ordinary. His conman mentor is happy to keep him grounded, for a fee.',
+   seasons:['Season 1','Season 2','Season 3']},
+  {id:'csm', title:'Chainsaw Man', color:'#3c2f2f', year:'2022', status:'Airing', genres:['Action','Horror'],
+   synopsis:'A debt-ridden teenager merges with his chainsaw devil dog and is drafted into a government devil-hunting unit.',
+   seasons:['Season 1']},
+  {id:'vin', title:'Vinland Saga', color:'#2b3339', year:'2019', status:'Finished', genres:['Action','Historical','Drama'],
+   synopsis:'Raised among the mercenaries who killed his father, a young Norseman pursues revenge across a war-torn Europe, and slowly learns what it costs.',
+   seasons:['Season 1','Season 2']},
+  {id:'spy', title:'Spy x Family', color:'#39343f', year:'2022', status:'Airing', genres:['Comedy','Action'],
+   synopsis:'A master spy assembles a fake family for a mission, unaware his wife is an assassin and his daughter reads minds.',
+   seasons:['Season 1','Season 2']},
+  {id:'fri', title:'Frieren: Beyond Journey\u2019s End', color:'#2f3a35', year:'2023', status:'Finished', genres:['Adventure','Drama','Fantasy'],
+   synopsis:'An elven mage outlives the party she saved the world with, and sets out to understand the humans she never took the time to know.',
+   seasons:['Season 1']},
+  {id:'ode', title:'Odd Taxi', color:'#333540', year:'2021', status:'Finished', genres:['Mystery','Drama'],
+   synopsis:'A walrus cab driver ferries the strange residents of a city through their nights, and drives straight into a missing-person case.',
+   seasons:['Season 1']},
+  {id:'brl', title:'Bocchi the Rock!', color:'#3e3440', year:'2022', status:'Finished', genres:['Comedy','Music'],
+   synopsis:'A crushingly shy guitarist with a bedroom following gets pulled into a band that plays in front of actual people.',
+   seasons:['Season 1']},
+  {id:'dun', title:'Delicious in Dungeon', color:'#37372c', year:'2024', status:'Airing', genres:['Adventure','Comedy','Fantasy'],
+   synopsis:'A broke adventuring party descends to rescue a lost member, eating the monsters they meet on the way down.',
+   seasons:['Season 1']}
+];
+/* Episode counts per allanime entry — the one thing ani-cli does return. */
+const EP_COUNTS = { aot:[25,12,22,28], fma:[33,31], mob:[12,13,12], csm:[12], vin:[24,24], spy:[12,25], fri:[28], ode:[13], brl:[12], dun:[24] };
+const SUB_LINE = 'Subtitles are burned into the stream (hardsub) — not a selectable track.';
+
+class Component extends DCLogic {
+  state = {
+    route:'auth', authMode:'signin', email:'', pass:'', name:'',
+    query:'', animeId:'aot', season:0, ep:1,
+    /* watch progress, keyed animeId|season|episode → 0..1. Mirrors the
+       Firestore doc users/{uid}/progress/{entryId}. */
+    progress: { 'aot|0|7':0.42, 'vin|0|3':0.88, 'fri|0|12':1, 'mob|1|2':0.15 },
+    profileOpen:false, drawerOpen:false, fs:false,
+    audio:'Sub', quality:'best',
+    playing:true, t:412,
+    favs:['aot','fma','mob','csm','vin','spy'],
+    recent:['frieren','odd taxi','bocchi','dungeon meshi']
+  };
+  componentDidMount() {
+    this.timer = setInterval(() => {
+      if (this.state.route === 'player' && this.state.playing) {
+        this.setState(s => {
+          const t = s.t >= 1420 ? 1420 : s.t + 1;
+          const k = s.animeId + '|' + s.season + '|' + s.ep;
+          return { t, progress: Object.assign({}, s.progress, { [k]: t / 1420 }) };
+        });
+      }
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  fmt(s) {
+    const m = Math.floor(s / 60), r = Math.floor(s % 60);
+    return m + ':' + String(r).padStart(2, '0');
+  }
+  epCount(a, i) { return (EP_COUNTS[a.id] || [12])[i] || 12; }
+  /* allanime lists every season as its own entry, so a season IS a search result. */
+  entryTitle(a, i) { return i === 0 ? a.title : a.title + ' ' + a.seasons[i]; }
+  prog(id, season, ep) { return this.state.progress[id + '|' + season + '|' + ep] || 0; }
+  lastWatched(id, season) {
+    let best = null;
+    Object.keys(this.state.progress).forEach(k => {
+      const [aid, s, e] = k.split('|');
+      if (aid === id && +s === season && this.state.progress[k] < 0.98) best = { season:+s, ep:+e, p: this.state.progress[k] };
+    });
+    return best;
+  }
+  card(a, i) {
+    const n = this.epCount(a, i);
+    const w = this.lastWatched(a.id, i);
+    return {
+      hasProg: !!w,
+      progWidth: w ? Math.round(w.p * 100) + '%' : '0%',
+      title: this.entryTitle(a, i), color: a.color,
+      meta: a.year + ' · ' + (this.state.audio === 'Dub' ? 'dub' : 'sub'),
+      epsLabel: n + ' episodes',
+      open: () => this.setState({ route:'anime', animeId:a.id, season:i, ep:1, profileOpen:false })
+    };
+  }
+  renderVals() {
+    const st = this.state;
+    const cur = CATALOG.find(a => a.id === st.animeId) || CATALOG[0];
+    const q = st.query.trim().toLowerCase();
+    const entries = [];
+    CATALOG.forEach(a => a.seasons.forEach((s, i) => entries.push({ a, i })));
+    const results = q ? entries.filter(e => this.entryTitle(e.a, e.i).toLowerCase().includes(q)) : entries;
+    const isFav = st.favs.includes(cur.id);
+    const dense = (this.props.density ?? 'Comfortable') === 'Compact';
+    const epTotal = this.epCount(cur, st.season);
+    const eps = Array.from({length: epTotal}, (_, i) => ({ n: i + 1 }));
+    const dur = 1420;
+    const pill = (on) => ({
+      bg: on ? 'oklch(0.84 0.14 155)' : 'transparent',
+      fg: on ? '#08110c' : '#a5a5ad',
+      border: on ? 'oklch(0.84 0.14 155)' : 'rgba(255,255,255,0.14)'
+    });
+    const group = (label, key, opts) => ({
+      label,
+      opts: opts.map(name => Object.assign({ name, select: () => this.setState({ [key]: name }) }, pill(st[key] === name)))
+    });
+
+    const srcError = (this.props.sourceState ?? 'Online') === 'Source error';
+    const resume = this.lastWatched(cur.id, st.season);
+
+    return {
+      showChrome: st.route !== 'player' && st.route !== 'auth',
+      isAuth: st.route === 'auth',
+      isRegister: st.authMode === 'register',
+      isSignin: st.authMode === 'signin',
+      authTitle: st.authMode === 'register' ? 'Create your account' : 'Sign in',
+      authCta: st.authMode === 'register' ? 'Create account' : 'Sign in',
+      authSwitch: st.authMode === 'register' ? 'Already have an account? Sign in' : 'No account yet? Create one',
+      toggleAuth: () => this.setState(s => ({ authMode: s.authMode === 'register' ? 'signin' : 'register' })),
+      email: st.email, pass: st.pass, name: st.name,
+      onEmail: e => this.setState({ email: e.target.value }),
+      onPass: e => this.setState({ pass: e.target.value }),
+      onName: e => this.setState({ name: e.target.value }),
+      submitAuth: () => this.setState({ route:'home' }),
+      logout: () => this.setState({ route:'auth', profileOpen:false, authMode:'signin', pass:'' }),
+
+      hasError: srcError,
+      noResults: !srcError && results.length === 0,
+      retry: () => this.forceUpdate(),
+
+      resumeLabel: resume ? 'Resume E' + resume.ep : 'Play E1',
+      playResume: () => this.setState({
+        route:'player', season: resume ? resume.season : st.season, ep: resume ? resume.ep : 1,
+        t: resume ? Math.round(resume.p * 1420) : 0, playing:true
+      }),
+
+      isHome: st.route === 'home', isSearch: st.route === 'search',
+      notSearch: st.route !== 'search',
+      filters: [
+        group('Audio', 'audio', ['Sub', 'Dub']),
+        group('Quality', 'quality', ['best', '1080', '720', '480', '360', 'worst'])
+      ],
+      fsPath: st.fs
+        ? 'M8 2v6H2M12 18v-6h6'
+        : 'M2 7V2h5M18 13v5h-5M13 2h5v5M7 18H2v-5',
+      isAnime: st.route === 'anime', isPlayer: st.route === 'player',
+      gridCols: 'repeat(auto-fill,minmax(' + (dense ? 118 : 152) + 'px,1fr))',
+      cliHints: this.props.showCliHints ?? true,
+
+      profileOpen: st.profileOpen,
+      toggleProfile: () => this.setState(s => ({ profileOpen: !s.profileOpen })),
+      goHome: () => this.setState({ route:'home', profileOpen:false }),
+      goSearch: () => this.setState({ route:'search', profileOpen:false }),
+      goBackList: () => this.setState({ route:'home' }),
+
+      favCount: st.favs.length,
+      favItems: st.favs.map(id => this.card(CATALOG.find(a => a.id === id), 0)),
+      recent: st.recent.map(term => ({ term, open: () => this.setState({ route:'search', query:term }) })),
+
+      query: st.query,
+      onQuery: e => this.setState({ query: e.target.value }),
+      clearQuery: () => this.setState({ query:'' }),
+      cliLine: '$ ani-cli "' + (st.query || '') + '"' + (st.audio === 'Dub' ? ' --dub' : '') + ' -q ' + st.quality,
+      results: srcError ? [] : results.map(e => this.card(e.a, e.i)),
+      resultCount: srcError ? '—' : results.length + ' entries',
+
+      cur: { title: this.entryTitle(cur, st.season), color: cur.color, year: cur.year, status: cur.status, genres: cur.genres, synopsis: cur.synopsis, videoBg: 'radial-gradient(120% 90% at 50% 40%, ' + cur.color + ', #000)' },
+      favLabel: isFav ? 'Saved ✓' : '+ Add to favourites',
+      favColor: isFav ? 'oklch(0.84 0.14 155)' : '#d8d8dc',
+      favBorder: isFav ? 'oklch(0.5 0.1 155)' : 'rgba(255,255,255,0.16)',
+      toggleFav: () => this.setState(s => ({ favs: isFav ? s.favs.filter(f => f !== cur.id) : s.favs.concat(cur.id) })),
+
+
+      seasonTabs: cur.seasons.map((name, i) => Object.assign({
+        name, select: () => this.setState({ season:i })
+      }, pill(i === st.season))),
+      seasonName: cur.seasons[st.season],
+      seasonNote: epTotal + ' episodes · each season is a separate ani-cli entry',
+      episodes: eps.map(e => {
+        const p = this.prog(cur.id, st.season, e.n);
+        return {
+          numLabel: String(e.n).padStart(2, '0'),
+          title: 'Episode ' + e.n, color: cur.color,
+          hasProg: p > 0,
+          done: p >= 0.98,
+          progWidth: Math.round(p * 100) + '%',
+          numFg: p >= 0.98 ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.85)',
+          rowBg: e.n === st.ep ? 'rgba(255,255,255,0.1)' : 'transparent',
+          play: () => this.setState({ route:'player', ep:e.n, t: Math.round(p * 1420), playing:true, drawerOpen:false })
+        };
+      }),
+
+      playerTitle: cur.title,
+      playerSub: cur.seasons[st.season] + ' · Episode ' + st.ep,
+      playGlyph: st.playing ? '❚❚' : '▶',
+      togglePlay: () => this.setState(s => ({ playing: !s.playing })),
+      back10: () => this.setState(s => ({ t: Math.max(0, s.t - 10) })),
+      fwd10: () => this.setState(s => ({ t: Math.min(dur, s.t + 10) })),
+      nextEp: () => this.setState(s => ({ ep: Math.min(eps.length, s.ep + 1), t:0, playing:true })),
+      leavePlayer: () => this.setState({ route:'anime', playing:false }),
+      pct: ((st.t / dur) * 100).toFixed(2),
+      timeLabel: this.fmt(st.t) + ' / ' + this.fmt(dur),
+      seek: e => {
+        const r = e.currentTarget.getBoundingClientRect();
+        this.setState({ t: Math.round(((e.clientX - r.left) / r.width) * dur) });
+      },
+      subLine: st.audio === 'Dub' ? '' : SUB_LINE,
+      drawerOpen: st.drawerOpen,
+      toggleDrawer: () => this.setState(s => ({ drawerOpen: !s.drawerOpen })),
+      fsLabel: st.fs ? 'EXIT' : 'FULL',
+      toggleFs: () => {
+        const el = document.documentElement;
+        if (!document.fullscreenElement) { if (el.requestFullscreen) el.requestFullscreen().catch(() => {}); }
+        else if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+        this.setState(s => ({ fs: !s.fs }));
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>
