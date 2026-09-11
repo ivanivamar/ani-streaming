@@ -13,14 +13,14 @@ ALLOWED_ORIGIN=http://localhost:4200
 # The Firebase Authentication uid of the single account allowed to use
 # this instance. Find it in Firebase console → Authentication → Users,
 # after creating your account from the Auth screen.
-OWNER_UID=
+OWNER_UID=mhbBKFrmM3N89i1YBIYEHKcoXME2
 
 # --- Firebase Admin credentials ---
 # Local dev: path to a service account JSON key
 # (Firebase console → Project settings → Service accounts → Generate new
 # private key). On Cloud Run: leave unset — the attached service
 # account's ambient credentials are used automatically.
-GOOGLE_APPLICATION_CREDENTIALS=
+GOOGLE_APPLICATION_CREDENTIALS=service-account.json
 
 # --- allanime / ani-cli upstream ---
 # ani-cli scrapes this API (see src/lib/allanime-client.ts). Its domain
@@ -29,4 +29,19 @@ GOOGLE_APPLICATION_CREDENTIALS=
 # failing outright, diff these against the live script before assuming
 # anything else is broken.
 ALLANIME_API_BASE=https://api.mkissa.net
-ALLANIME_REFERER=https://mkissa.to
+# 2026-09-11: mkissa.to itself is currently sitting behind a Cloudflare
+# bot-verification wall (confirmed via community reports — see
+# https://github.com/yuzono/anime-extensions/issues/607 — and reproduced
+# here: /api/sources's key-derivation step was getting served a challenge
+# page instead of the real homepage). allmanga.to is the newer front-end
+# domain community scrapers have moved to and loads normally as of this
+# writing. Only overriding the referer, not ALLANIME_API_BASE above —
+# search/episodes are working fine against api.mkissa.net right now, and
+# there's no confirmation the two domains share the same key material, so
+# swapping the GraphQL host too risks breaking what already works. If
+# /api/sources still fails after this change, check the new
+# `[allanime-crypto]` log line: same "markers missing" (this mirror is
+# blocked too, or the derived key doesn't match api.mkissa.net) vs. a new
+# error further down (this got further — good sign, next blocker is
+# elsewhere).
+ALLANIME_REFERER=https://allmanga.to

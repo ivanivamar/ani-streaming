@@ -1,34 +1,57 @@
 import { createCipheriv, createDecipheriv, createHash } from 'node:crypto';
 import { config } from '../config.js';
+import { browserFetch } from './browser-fetch.js';
 import { UpstreamSourceError } from './errors.js';
 
 /**
  * ============================================================================
- * UNVERIFIED — read before touching /api/sources.
+ * CONFIRMED BROKEN as of 2026-09-11 — read before touching /api/sources.
  * ============================================================================
- * Everything in this file ports ani-cli's `fetch_keys` / `get_aa_req` /
- * `process_tobeparsed` shell functions, which shell out to the `botan` CLI
- * for AES-256-GCM. This project has no network path to allanime and no
- * `botan` binary to diff against, so it was ported by reading the bash
- * source, not by running it. Two things in particular are assumptions
- * rather than confirmed facts:
+ * `deriveKey()` below fails every time right now: `config.allanime.referer`
+ * (mkissa.to) is sitting behind a Cloudflare bot-verification wall, so the
+ * "homepage" fetch() gets served a JS anti-tampering challenge page instead
+ * of the real site — no `epoch`/`partB`/app-bundle markers to find, because
+ * they're just not on that page. Confirmed independently: mkissa.to is
+ * reported "Cloudflare protected" in a live community issue
+ * (github.com/yuzono/anime-extensions/issues/607), and even Aniyomi (a real
+ * Android app with a full in-app browser that executes JS) has multiple open
+ * issues failing to bypass this same wall (aniyomiorg/aniyomi#2206, #826;
+ * aniyomiorg/aniyomi-extensions#2669) — so this isn't specific to this
+ * project's plain server-side fetch(), and isn't fixable by tweaking the
+ * scraping patterns below.
  *
- *   1. `botan hash --no-fsname` is called with no --algo flag. This is
- *      assumed to mean SHA-256 (botan's documented default), used below
- *      for deriving the GCM IV. If decryption fails outright, this is the
- *      first thing to check against a real botan install (`botan help hash`).
+ * Already ruled out: swapping to allmanga.to (the newer community-reported
+ * mirror front-end) as `ALLANIME_REFERER`. It loads fine (not Cloudflare
+ * blocked), but it's a structurally different, much smaller Nuxt.js site —
+ * no epoch/partB/app-bundle markers either, and community reports say its
+ * episode/video pages redirect back to mkissa.to anyway. Not a productive
+ * direction to keep pulling on.
+ *
+ * 2026-09-11, second attempt: the homepage fetch now goes through
+ * lib/browser-fetch.ts — a real headless Chromium page load instead of a
+ * plain fetch() — to give Cloudflare's JS challenge something that can
+ * actually execute it. Deliberately not escalated further than that (no
+ * stealth/anti-detection plugin, no CAPTCHA solver, no IP rotation); if a
+ * real browser still gets walled off, treat that as this endpoint staying
+ * broken rather than a reason to keep escalating. Requires Chromium to
+ * actually be installed locally (`npx playwright install chromium` in
+ * server/) — if it's missing, this fails fast with a clear message instead
+ * of the generic marker-missing one.
+ *
+ * Below this note: everything ports ani-cli's `fetch_keys` / `get_aa_req` /
+ * `process_tobeparsed` shell functions (which shell out to the `botan` CLI
+ * for AES-256-GCM), transcribed from the bash source rather than verified
+ * against a live run — this part was never confirmed correct or incorrect,
+ * because execution never gets past the Cloudflare wall above to test it:
+ *
+ *   1. `botan hash --no-fsname` is called with no --algo flag. Assumed to
+ *      mean SHA-256 (botan's documented default), used below for deriving
+ *      the GCM IV — check this against a real botan install
+ *      (`botan help hash`) if decryption ever fails *after* the wall above
+ *      is cleared.
  *   2. The GCM ciphertext/tag byte layout (tag = trailing 16 bytes, no
  *      AAD) is inferred from how the script slices botan's output with
  *      `dd`, not from botan's own documentation.
- *
- * Everything else here (the key-derivation steps, the aaReq payload shape,
- * the "tobeparsed" framing: 1 version byte + 12-byte IV + ciphertext+tag)
- * is a direct, faithful transcription of the shell source.
- *
- * If this endpoint starts failing, enable request logging and compare
- * against a real `ani-cli` run with `set -x` before assuming the *approach*
- * is wrong — it may just be a rotated constant (the mask lives in
- * allanime's JS bundle, so it changes whenever their frontend redeploys).
  * ============================================================================
  */
 
@@ -69,13 +92,25 @@ function escapeRegExp(value: string): string {
  * for KEY_TTL_MS since the mask only changes when allanime redeploys.
  */
 async function deriveKey(): Promise<DerivedKey> {
-  const homepage = await fetchText(config.allanime.referer);
+  const { html: homepage, cookieHeader } = await browserFetch(config.allanime.referer);
 
   const epochMatch = homepage.match(/"epoch":(\d+)/);
   const partBMatch = homepage.match(/"partB":"([^"]*)"/);
   const appUrlMatch = homepage.match(new RegExp(`${escapeRegExp(config.allanime.cdn)}/entry/app\\.[A-Za-z0-9_.-]+\\.js`));
 
   if (!epochMatch || !partBMatch || !appUrlMatch) {
+    // Unverified scraping logic (see file-level note) — when this trips,
+    // dump *which* marker(s) are missing plus a homepage snippet so the
+    // next failure is diagnosable from server logs alone: is this really a
+    // frontend-shape change, or did we get served something else entirely
+    // (a bot-check/Cloudflare challenge page, a redirect, an error page)?
+    console.error('[allanime-crypto] homepage marker(s) missing:', {
+      epoch: !!epochMatch,
+      partB: !!partBMatch,
+      appBundle: !!appUrlMatch,
+      homepageLength: homepage.length,
+      homepageSnippet: homepage.slice(0, 800),
+    });
     throw new UpstreamSourceError(
       "Could not find epoch/partB/app-bundle markers on allanime's homepage — its frontend shape may have changed.",
     );
@@ -84,14 +119,21 @@ async function deriveKey(): Promise<DerivedKey> {
   const epoch = epochMatch[1]!;
   const partBHex = Buffer.from(partBMatch[1]!, 'base64').toString('hex');
 
-  const appJs = await fetchText(appUrlMatch[0]);
+  // Reuse the browser's cookies (notably Cloudflare's `cf_clearance`, when
+  // present) on these follow-up fetches instead of opening another browser
+  // page for each one — a plain fetch() carrying a valid clearance cookie
+  // is enough to pass, without needing JS execution a second time.
+  const cookieHeaders = cookieHeader ? { Cookie: cookieHeader } : {};
+  const appJs = await fetchText(appUrlMatch[0], cookieHeaders);
   const chunkNames = [...appJs.matchAll(/"\.\.\/chunks\/([A-Za-z0-9_.-]+\.js)"/g)].slice(0, 5).map((m) => m[1]!);
 
   if (chunkNames.length === 0) {
     throw new UpstreamSourceError("Could not find any JS chunk references in allanime's app bundle.");
   }
 
-  const chunkTexts = await Promise.all(chunkNames.map((name) => fetchText(`${config.allanime.cdn}/${name}`)));
+  const chunkTexts = await Promise.all(
+    chunkNames.map((name) => fetchText(`${config.allanime.cdn}/${name}`, cookieHeaders)),
+  );
   const maskMatch = chunkTexts.join('\n').match(/[0-9a-f]{64}/);
   if (!maskMatch) {
     throw new UpstreamSourceError("Could not find the 64-hex-char key mask in allanime's JS bundle.");

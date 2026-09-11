@@ -13,6 +13,7 @@ node_modules
 firebase-debug.log
 .firebase/
 *.serviceAccountKey.json
+service-account.json
 
 # IDE
 .vscode/*

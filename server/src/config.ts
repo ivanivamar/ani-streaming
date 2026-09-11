@@ -19,6 +19,15 @@ export const config = {
     // writing. Override via env if they've moved on.
     apiBase: env('ALLANIME_API_BASE', 'https://api.mkissa.net'),
     referer: env('ALLANIME_REFERER', 'https://mkissa.to'),
+    // Static asset host the AES key gets reverse-derived from (see
+    // lib/allanime-crypto.ts) — deliberately a separate value from
+    // apiBase/referer above since ani-cli's script keeps them distinct too.
+    cdn: env('ALLANIME_CDN', 'https://cdn.mkissa.net/all/mk/_app/immutable'),
+    // Host the *decoded* provider links (clock.json etc.) resolve against.
+    // Notably still the old "allanime.day" name in ani-cli's script even
+    // though apiBase/referer above have moved to mkissa.* — unconfirmed
+    // whether that's deliberate or a lagging update on ani-cli's side.
+    clockBase: env('ALLANIME_CLOCK_BASE', 'https://allanime.day'),
     userAgent: env(
       'ALLANIME_USER_AGENT',
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0',
