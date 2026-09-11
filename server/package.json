@@ -15,11 +15,13 @@
   "dependencies": {
     "dotenv": "^16.4.0",
     "express": "^5.0.0",
-    "firebase-admin": "^13.0.0"
+    "firebase-admin": "^13.0.0",
+    "swagger-ui-express": "^5.0.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^20.0.0",
+    "@types/swagger-ui-express": "^4.1.0",
     "tsx": "^4.7.0",
     "typescript": "~5.8.0"
   }
