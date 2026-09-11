@@ -1,29 +1,51 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { Subject, from, map, merge, switchMap, tap } from 'rxjs';
+import Hls from 'hls.js';
+import { Subject, combineLatest, from, map, merge, switchMap, tap } from 'rxjs';
 
 import { CatalogService } from '../../core/services/catalog.service';
+import { AnimeSeries } from '../../core/models/anime.model';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
-/** mm:ss (episodes are well under an hour — see the fake DURATION_SECONDS below). */
+interface LoadResult {
+  series: AnimeSeries;
+  seasonIndex: number;
+  playbackUrl: string;
+}
+
+/** mm:ss. */
 function formatTime(totalSeconds: number): string {
-  const seconds = Math.max(0, Math.round(totalSeconds));
+  const seconds = Math.max(0, Math.round(totalSeconds || 0));
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+/** "01".."99", but leaves decimals (allanime specials like 12.5) alone rather than mangling them. */
+function padEpisode(episode: number): string {
+  return episode < 10 ? `0${episode}` : String(episode);
+}
+
 /**
  * Watch screen — README.md "Screens → 5. Watch (`/watch/:entryId/:ep`)".
- * Full-viewport, no topbar (own layout, not AppShell). There is no real
- * stream yet (README.md "Assets": posters/thumbnails are placeholders, and
- * the backend contract for `/api/sources` + `/api/proxy` isn't wired to the
- * frontend in this pass) — playback is a timed simulation over a fake fixed
- * duration so the scrub bar, timecode and progress-write rules are all
- * exercisable now, with a clear seam (`_t`/`_playing`) to swap in a real
- * <video> + hls.js later.
+ * Full-viewport, no topbar (own layout, not AppShell). Real playback:
+ * `/api/sources` resolves a URL, which is only reachable through
+ * `/api/proxy` (Referer/Origin re-added — see CatalogService), fed into
+ * hls.js for `.m3u8` sources or set directly as `<video src>` otherwise
+ * (README.md "Frontend playback: hls.js (native HLS is Safari-only)").
  */
 @Component({
   selector: 'app-watch-page',
@@ -43,51 +65,55 @@ export class WatchPage {
 
   readonly episode = computed(() => Number(this.ep()) || 1);
 
+  private readonly videoRef = viewChild<ElementRef<HTMLVideoElement>>('video');
+  private hls: Hls | null = null;
+
   private readonly entryId$ = toObservable(this.entryId);
+  private readonly episode$ = toObservable(this.episode);
   private readonly retry$ = new Subject<void>();
 
   private readonly _loadState = signal<LoadState>('loading');
   readonly loadState = this._loadState.asReadonly();
 
-  private readonly entry = toSignal(
-    merge(this.entryId$, this.retry$.pipe(map(() => this.entryId()))).pipe(
+  private readonly result = toSignal(
+    merge(
+      combineLatest([this.entryId$, this.episode$]),
+      this.retry$.pipe(map((): [string, number] => [this.entryId(), this.episode()])),
+    ).pipe(
       tap(() => this._loadState.set('loading')),
-      switchMap((id) => from(this.catalog.getEntry(id))),
+      switchMap(([entryId, episode]) => from(this.load(entryId, episode))),
       tap((result) => this._loadState.set(result ? 'ready' : 'error')),
     ),
     { initialValue: null },
   );
 
-  readonly series = computed(() => this.entry()?.series ?? null);
-  readonly seasonIndex = computed(() => this.entry()?.seasonIndex ?? 0);
+  readonly series = computed(() => this.result()?.series ?? null);
+  readonly seasonIndex = computed(() => this.result()?.seasonIndex ?? 0);
   readonly season = computed(() => this.series()?.seasons[this.seasonIndex()] ?? null);
+  private readonly playbackUrl = computed(() => this.result()?.playbackUrl ?? null);
 
-  readonly hasNextEpisode = computed(() => {
+  private readonly nextEpisodeNumber = computed<number | null>(() => {
     const season = this.season();
-    return !!season && this.episode() < season.episodeCount;
+    if (!season) return null;
+    const index = season.episodes.indexOf(this.episode());
+    return index !== -1 && index < season.episodes.length - 1 ? season.episodes[index + 1] : null;
   });
+  readonly hasNextEpisode = computed(() => this.nextEpisodeNumber() !== null);
 
   readonly episodeRows = computed(() => {
-    const series = this.series();
     const season = this.season();
-    if (!series || !season) return [];
-    const seasonIndex = this.seasonIndex();
-    return Array.from({ length: season.episodeCount }, (_, i) => {
-      const episode = i + 1;
-      return {
-        episode,
-        padded: String(episode).padStart(2, '0'),
-        current: episode === this.episode(),
-      };
-    });
+    if (!season) return [];
+    return season.episodes.map((episode) => ({
+      episode,
+      padded: padEpisode(episode),
+      current: episode === this.episode(),
+    }));
   });
-
-  /** Fake fixed runtime — no real stream to read a duration from yet. */
-  private readonly DURATION_SECONDS = 24 * 60;
-  readonly durationSeconds = this.DURATION_SECONDS;
 
   private readonly _t = signal(0);
   readonly t = this._t.asReadonly();
+  private readonly _duration = signal(0);
+  readonly durationSeconds = this._duration.asReadonly();
   private readonly _playing = signal(false);
   readonly playing = this._playing.asReadonly();
   private readonly _fullscreen = signal(false);
@@ -95,38 +121,17 @@ export class WatchPage {
   private readonly _drawerOpen = signal(false);
   readonly drawerOpen = this._drawerOpen.asReadonly();
 
-  readonly progressPercent = computed(() => (this.t() / this.DURATION_SECONDS) * 100);
-  readonly timeLabel = computed(() => `${formatTime(this.t())} / ${formatTime(this.DURATION_SECONDS)}`);
+  readonly progressPercent = computed(() => (this.durationSeconds() ? (this.t() / this.durationSeconds()) * 100 : 0));
+  readonly timeLabel = computed(() => `${formatTime(this.t())} / ${formatTime(this.durationSeconds())}`);
 
   constructor() {
-    // Seek to stored progress whenever the loaded entry or the :ep param
-    // changes (README.md "Interactions & behavior": "Episode click opens
-    // the watch route seeked to stored progress"). Starts paused every
-    // time — matches "Back from the player returns... paused" symmetry
-    // and avoids a surprise autoplay on navigation.
+    // Attach (or re-attach, on a new episode/entry) the resolved source to
+    // the <video> element whenever either becomes available.
     effect(() => {
-      const series = this.series();
-      const episode = this.episode();
-      if (!series) return;
-      const fraction = this.catalog.episodeProgress(series.id, this.seasonIndex(), episode);
-      this._t.set(Math.round(fraction * this.DURATION_SECONDS));
-      this._playing.set(false);
-    });
-
-    // Fake playback clock — the seam that becomes a real <video> timeupdate
-    // listener once /api/sources + hls.js are wired in.
-    effect((onCleanup) => {
-      if (!this._playing()) return;
-      const id = setInterval(() => {
-        const next = this._t() + 1;
-        if (next >= this.DURATION_SECONDS) {
-          this._t.set(this.DURATION_SECONDS);
-          this._playing.set(false);
-        } else {
-          this._t.set(next);
-        }
-      }, 1000);
-      onCleanup(() => clearInterval(id));
+      const url = this.playbackUrl();
+      const video = this.videoRef()?.nativeElement;
+      if (!url || !video) return;
+      this.attachSource(video, url);
     });
 
     // Progress rules (README.md "State model"): every ~10s while playing...
@@ -138,6 +143,7 @@ export class WatchPage {
     this.destroyRef.onDestroy(() => {
       clearInterval(saveTimer);
       this.saveProgress();
+      this.hls?.destroy();
       document.removeEventListener('visibilitychange', onVisibilityChange);
       document.removeEventListener('fullscreenchange', onFullscreenChange);
     });
@@ -154,39 +160,104 @@ export class WatchPage {
     document.addEventListener('fullscreenchange', onFullscreenChange);
   }
 
-  togglePlay(): void {
-    if (this.loadState() !== 'ready') return;
-    const next = !this._playing();
-    this._playing.set(next);
-    if (!next) this.saveProgress();
+  private async load(entryId: string, episode: number): Promise<LoadResult | null> {
+    const entry = await this.catalog.getEntry(entryId);
+    if (!entry) return null;
+    try {
+      const playbackUrl = await this.catalog.resolvePlaybackUrl(entryId, episode);
+      return { ...entry, playbackUrl };
+    } catch {
+      return null;
+    }
   }
 
-  skip(deltaSeconds: number): void {
-    this._t.update((t) => Math.min(this.DURATION_SECONDS, Math.max(0, t + deltaSeconds)));
+  private attachSource(video: HTMLVideoElement, url: string): void {
+    this.hls?.destroy();
+    this.hls = null;
+
+    if (url.includes('.m3u8') && Hls.isSupported()) {
+      const hls = new Hls();
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (data.fatal) this._loadState.set('error');
+      });
+      hls.loadSource(url);
+      hls.attachMedia(video);
+      this.hls = hls;
+    } else {
+      video.src = url;
+    }
+  }
+
+  onVideoPlay(): void {
+    this._playing.set(true);
+  }
+
+  onVideoPause(): void {
+    this._playing.set(false);
     this.saveProgress();
   }
 
-  seekToFraction(fraction: number): void {
-    this._t.set(Math.round(Math.min(1, Math.max(0, fraction)) * this.DURATION_SECONDS));
+  onVideoTimeUpdate(video: HTMLVideoElement): void {
+    this._t.set(video.currentTime);
+  }
+
+  onVideoLoadedMetadata(video: HTMLVideoElement): void {
+    this._duration.set(video.duration || 0);
+    const series = this.series();
+    if (series && video.duration) {
+      const fraction = this.catalog.episodeProgress(series.id, this.seasonIndex(), this.episode());
+      video.currentTime = fraction * video.duration;
+    }
+  }
+
+  onVideoSeeked(): void {
+    this.saveProgress();
+  }
+
+  onVideoError(): void {
+    this._loadState.set('error');
+  }
+
+  togglePlay(): void {
+    const video = this.videoRef()?.nativeElement;
+    if (!video || this.loadState() !== 'ready') return;
+    if (video.paused) {
+      video.play().catch(() => {});
+    } else {
+      video.pause();
+    }
+  }
+
+  skip(deltaSeconds: number): void {
+    const video = this.videoRef()?.nativeElement;
+    if (!video || !video.duration) return;
+    video.currentTime = Math.min(video.duration, Math.max(0, video.currentTime + deltaSeconds));
     this.saveProgress();
   }
 
   onScrubClick(event: MouseEvent): void {
+    const video = this.videoRef()?.nativeElement;
+    if (!video || !video.duration) return;
     const track = event.currentTarget as HTMLElement;
     const rect = track.getBoundingClientRect();
-    this.seekToFraction((event.clientX - rect.left) / rect.width);
+    const fraction = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+    video.currentTime = fraction * video.duration;
+    this.saveProgress();
   }
 
   nextEpisode(): void {
     const season = this.season();
-    if (!season || !this.hasNextEpisode()) return;
+    const next = this.nextEpisodeNumber();
+    if (!season || next === null) return;
+    this.videoRef()?.nativeElement.pause();
     this.saveProgress();
-    this.router.navigate(['/watch', season.entryId, this.episode() + 1]);
+    this.router.navigate(['/watch', season.entryId, next]);
   }
 
   openEpisode(episode: number): void {
     const season = this.season();
     if (!season) return;
+    this.videoRef()?.nativeElement.pause();
     this.saveProgress();
     this._drawerOpen.set(false);
     this.router.navigate(['/watch', season.entryId, episode]);
@@ -213,7 +284,7 @@ export class WatchPage {
   }
 
   goBack(): void {
-    this._playing.set(false);
+    this.videoRef()?.nativeElement.pause();
     this.saveProgress();
     const season = this.season();
     if (season) {
@@ -225,7 +296,8 @@ export class WatchPage {
 
   private saveProgress(): void {
     const series = this.series();
-    if (!series) return;
-    this.catalog.setEpisodeProgress(series.id, this.seasonIndex(), this.episode(), this.t() / this.DURATION_SECONDS);
+    const video = this.videoRef()?.nativeElement;
+    if (!series || !video || !video.duration) return;
+    this.catalog.setEpisodeProgress(series.id, this.seasonIndex(), this.episode(), video.currentTime / video.duration);
   }
 }

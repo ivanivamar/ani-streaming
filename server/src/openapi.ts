@@ -114,21 +114,26 @@ export const openApiSpec: Record<string, unknown> = {
     '/episodes': {
       get: {
         tags: ['episodes'],
-        summary: 'List available episode numbers for one entry',
+        summary: 'Title + available episode numbers for one entry',
         description:
-          'Numbers rather than a count, and not necessarily consecutive integers — allanime encodes specials ' +
-          'as decimals (e.g. 12.5) slotted between two regular episodes.',
+          '`title` is a deliberate extension beyond the README\'s literal `[episodeNumber]` shape — the ' +
+          'anime-detail and watch screens are reachable by direct URL (refresh, a shared link, back-navigation ' +
+          "from the player) with no title already in hand, and there's no separate \"get one show by id\" " +
+          'endpoint. `episodes` is ascending but not necessarily consecutive integers — allanime encodes ' +
+          'specials as decimals (e.g. 12.5) slotted between two regular episodes.',
         parameters: [
           { name: 'entryId', in: 'query', required: true, schema: { type: 'string', example: 'aBcD123' } },
           dubParam,
         ],
         responses: {
           '200': {
-            description: 'Ascending episode numbers.',
+            description: 'Title and ascending episode numbers.',
             content: {
               'application/json': {
-                schema: { type: 'array', items: { type: 'number' } },
-                examples: { default: { value: [1, 2, 3, 4, 5, 6, 7, 12.5, 13] } },
+                schema: { $ref: '#/components/schemas/EpisodeList' },
+                examples: {
+                  default: { value: { title: 'Frieren: Beyond Journey’s End', episodes: [1, 2, 3, 4, 5, 6, 7, 12.5, 13] } },
+                },
               },
             },
           },
@@ -199,6 +204,14 @@ export const openApiSpec: Record<string, unknown> = {
             description: 'Defaults to the standard allanime referer. Pass /api/sources’s `headers.Referer` through here.',
             schema: { type: 'string', format: 'uri' },
           },
+          {
+            name: 'token',
+            in: 'query',
+            description:
+              'Alternative to the Authorization header, for <video>/hls.js requests that can\'t set one ' +
+              '(see server/src/middleware/auth.ts). Not needed when calling this with a bearer token instead.',
+            schema: { type: 'string' },
+          },
         ],
         responses: {
           '200': {
@@ -237,6 +250,14 @@ export const openApiSpec: Record<string, unknown> = {
           entryId: { type: 'string' },
           title: { type: 'string' },
           episodes: { type: 'integer', description: 'Episode count for the requested audio track.' },
+        },
+      },
+      EpisodeList: {
+        type: 'object',
+        required: ['title', 'episodes'],
+        properties: {
+          title: { type: 'string' },
+          episodes: { type: 'array', items: { type: 'number' }, description: 'Ascending; may include decimals.' },
         },
       },
       SourcesResponse: {

@@ -16,6 +16,11 @@ interface EpisodeRow {
   watched: boolean;
 }
 
+/** "01".."99", but leaves decimals (allanime specials like 12.5) alone rather than mangling them. */
+function padEpisode(episode: number): string {
+  return episode < 10 ? `0${episode}` : String(episode);
+}
+
 /**
  * Anime detail screen — README.md "Screens → 4. Anime detail (`/anime/:entryId`)".
  * The route's entryId is one season's allanime entry (what a search result
@@ -58,6 +63,13 @@ export class AnimeDetailPage {
   readonly series = computed(() => this.entry()?.series ?? null);
   readonly notFound = computed(() => !this.loading() && !this.series());
 
+  /** "2013 · Finished", or just one side, or '' — no AniList metadata wired up yet, so often empty. */
+  readonly yearStatusLabel = computed(() => {
+    const series = this.series();
+    if (!series) return '';
+    return [series.year, series.status].filter(Boolean).join(' · ');
+  });
+
   private readonly _selectedSeasonIndex = signal(0);
   readonly selectedSeasonIndex = this._selectedSeasonIndex.asReadonly();
 
@@ -80,12 +92,11 @@ export class AnimeDetailPage {
     const season = this.season();
     if (!series || !season) return [];
     const seasonIndex = this.selectedSeasonIndex();
-    return Array.from({ length: season.episodeCount }, (_, i) => {
-      const episode = i + 1;
+    return season.episodes.map((episode) => {
       const fraction = this.catalog.episodeProgress(series.id, seasonIndex, episode);
       return {
         episode,
-        padded: String(episode).padStart(2, '0'),
+        padded: padEpisode(episode),
         percent: Math.round(fraction * 100),
         hasProgress: fraction > 0 && fraction < WATCHED_THRESHOLD,
         watched: fraction >= WATCHED_THRESHOLD,
@@ -111,7 +122,8 @@ export class AnimeDetailPage {
 
   toggleFavourite(): void {
     const series = this.series();
-    if (series) this.catalog.toggleFavourite(series.id);
+    const season = this.season();
+    if (series && season) this.catalog.toggleFavourite(series.id, series.title, season.episodes.length);
   }
 
   play(): void {

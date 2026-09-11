@@ -5,10 +5,9 @@ import { HttpError } from '../lib/errors.js';
 export const episodesRouter = Router();
 
 /**
- * `GET /api/episodes?entryId=&dub=` → `[episodeNumber]` (README.md
- * "Backend contract"). Numbers rather than a simple count, and not
- * necessarily consecutive integers — see listEpisodes in the allanime
- * client for why.
+ * `GET /api/episodes?entryId=&dub=` → `{ title, episodes: [episodeNumber] }`
+ * (README.md "Backend contract" — see listEpisodes in the allanime client
+ * for why `title` is included beyond the literal documented shape).
  */
 episodesRouter.get('/episodes', async (req, res) => {
   const rawEntryId = req.query['entryId'];
@@ -20,6 +19,6 @@ episodesRouter.get('/episodes', async (req, res) => {
   const dubParam = req.query['dub'];
   const dub = dubParam === 'true' || dubParam === '1';
 
-  const episodes = await listEpisodes(entryId, dub ? 'dub' : 'sub');
-  res.json(episodes);
+  const result = await listEpisodes(entryId, dub ? 'dub' : 'sub');
+  res.json(result);
 });

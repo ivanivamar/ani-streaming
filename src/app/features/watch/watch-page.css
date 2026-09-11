@@ -106,16 +106,10 @@
 .watch__video {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.watch__video-label {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.12em;
-  color: rgba(255, 255, 255, 0.25);
+  width: 100%;
+  height: 100%;
+  background: #000;
+  object-fit: contain;
 }
 
 /* ---- Top bar ---- */
@@ -239,7 +233,7 @@
   color: #0b0b0c;
 }
 
-.watch__play .material-symbols-outlined {
+.watch__play .material-icons {
   font-size: 22px;
 }
 
@@ -258,7 +252,7 @@
   transition: background 0.15s ease-out;
 }
 
-.watch__icon-btn .material-symbols-outlined {
+.watch__icon-btn .material-icons {
   font-size: 20px;
 }
 

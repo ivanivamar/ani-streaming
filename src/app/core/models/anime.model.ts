@@ -5,11 +5,15 @@ export type AudioMode = 'Sub' | 'Dub';
  * One allanime search entry. ani-cli/allanime lists every season of a show
  * as its own independent entry (data-sources.md → "Seasons as a grouping"),
  * so a "season" here IS a distinct `entryId`, not a sub-resource.
+ *
+ * `episodes` is the actual list of episode numbers from `GET /api/episodes`
+ * — ascending, but not necessarily consecutive integers (allanime encodes
+ * specials as decimals like 12.5), so it's a list rather than a count.
  */
 export interface AnimeSeason {
   entryId: string;
   seasonLabel: string;
-  episodeCount: number;
+  episodes: number[];
 }
 
 /**

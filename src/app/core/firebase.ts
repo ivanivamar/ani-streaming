@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { environment } from '../../environments/environment';
+import { firebaseConfig } from '../../environments/firebase-config';
 
 /**
  * Plain Firebase JS SDK singletons, initialized once at module load.
@@ -13,5 +13,5 @@ import { environment } from '../../environments/environment';
  * `firebase` package has no Angular peer dependency at all, so it isn't
  * exposed to that. Revisit AngularFire once its peer range catches up.
  */
-export const firebaseApp = initializeApp(environment.firebase);
+export const firebaseApp = initializeApp(firebaseConfig);
 export const auth = getAuth(firebaseApp);

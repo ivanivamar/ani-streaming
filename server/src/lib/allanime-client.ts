@@ -122,6 +122,7 @@ export async function searchShows(query: string, audio: AudioMode): Promise<Sear
 const EPISODES_QUERY = `query ($showId: String!) {
   show(_id: $showId) {
     _id
+    name
     availableEpisodesDetail
   }
 }`;
@@ -130,6 +131,7 @@ interface AllanimeEpisodesResponse {
   data?: {
     show?: {
       _id: string;
+      name?: string;
       /** Episode identifiers per audio track, as strings — allanime uses
        *  decimal numbers like "12.5" for specials slotted between two
        *  regular episodes, so these aren't always consecutive integers. */
@@ -139,18 +141,34 @@ interface AllanimeEpisodesResponse {
   errors?: { message: string }[];
 }
 
+export interface EpisodeList {
+  title: string;
+  episodes: number[];
+}
+
 /**
  * `GET /api/episodes?entryId=&dub=` (README.md "Backend contract").
- * Returns the episode numbers available for one audio track, ascending.
+ *
+ * Returns the title alongside the episode numbers — a deliberate extension
+ * beyond the README's literal `[episodeNumber]` shape (same spirit as
+ * `/api/proxy`'s optional `referer` param). The frontend's anime-detail and
+ * watch screens are reachable by direct URL (`/anime/:entryId`,
+ * `/watch/:entryId/:ep` — refresh, a shared link, back-navigation from the
+ * player) with nothing upstream to have already supplied a title, and
+ * there's no separate "get one show by id" endpoint to fetch it from
+ * otherwise. Episode numbers are ascending but not necessarily consecutive
+ * integers — allanime uses decimals like "12.5" for specials.
  */
-export async function listEpisodes(entryId: string, audio: AudioMode): Promise<number[]> {
+export async function listEpisodes(entryId: string, audio: AudioMode): Promise<EpisodeList> {
   const response = await allanimeGql<AllanimeEpisodesResponse>(EPISODES_QUERY, { showId: entryId });
 
   const raw = response.data?.show?.availableEpisodesDetail?.[audio] ?? [];
-  return raw
+  const episodes = raw
     .map((value) => Number(value))
     .filter((value) => Number.isFinite(value))
     .sort((a, b) => a - b);
+
+  return { title: response.data?.show?.name ?? '', episodes };
 }
 
 // ============================================================================
