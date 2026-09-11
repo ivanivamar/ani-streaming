@@ -20,8 +20,17 @@ export const routes: Routes = [
     canActivate: [authGuard],
     title: 'Search · ani.stream',
   },
-  // Anime detail and watch ship in later passes (see README.md "Screens" —
-  // this app is built screen by screen). Route stubs land here as each one
-  // is implemented.
+  {
+    path: 'anime/:entryId',
+    loadComponent: () => import('./features/anime-detail/anime-detail-page').then((m) => m.AnimeDetailPage),
+    canActivate: [authGuard],
+    title: 'ani.stream',
+  },
+  {
+    path: 'watch/:entryId/:ep',
+    loadComponent: () => import('./features/watch/watch-page').then((m) => m.WatchPage),
+    canActivate: [authGuard],
+    title: 'ani.stream',
+  },
   { path: '**', redirectTo: '' },
 ];

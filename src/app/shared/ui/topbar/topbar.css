@@ -78,6 +78,12 @@
 
 .search__icon {
   flex: none;
+  font-size: 17px;
+  color: #61616a;
+}
+
+.search__icon--active {
+  color: #9a9aa2;
 }
 
 .search__placeholder {

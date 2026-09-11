@@ -104,8 +104,6 @@ export class SearchPage {
   }
 
   openCard(card: AnimeCard): void {
-    // TODO: anime detail ships in a later pass (README.md "Screens" §4);
-    // until then this falls through the wildcard route back to home.
     this.router.navigate(['/anime', card.entryId]);
   }
 

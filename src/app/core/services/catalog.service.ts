@@ -176,6 +176,7 @@ export class CatalogService {
   readonly audioMode = this._audioMode.asReadonly();
 
   readonly recentSearches = this._recentSearches.asReadonly();
+  readonly favouriteIds = this._favouriteIds.asReadonly();
 
   readonly favourites = computed<AnimeCard[]>(() =>
     this._favouriteIds()
@@ -188,6 +189,51 @@ export class CatalogService {
 
   setAudioMode(mode: AudioMode): void {
     this._audioMode.set(mode);
+  }
+
+  toggleFavourite(seriesId: string): void {
+    this._favouriteIds.update((ids) =>
+      ids.includes(seriesId) ? ids.filter((id) => id !== seriesId) : [...ids, seriesId],
+    );
+  }
+
+  /**
+   * STUB combining `GET /api/episodes` with the cached AniList metadata in
+   * `meta/{entryId}` (README.md "Metadata"): given a search result's
+   * entryId (one season), finds the whole series it belongs to plus which
+   * season index that entry is. Simulates latency so the detail screen's
+   * loading state (README.md "States to implement") is exercised.
+   */
+  async getEntry(entryId: string): Promise<{ series: AnimeSeries; seasonIndex: number } | null> {
+    await this.simulateLatency();
+    for (const series of this.catalog) {
+      const seasonIndex = series.seasons.findIndex((season) => season.entryId === entryId);
+      if (seasonIndex !== -1) return { series, seasonIndex };
+    }
+    return null;
+  }
+
+  /** Progress fraction (0..1) for one episode; 0 if nothing recorded. */
+  episodeProgress(seriesId: string, seasonIndex: number, episode: number): number {
+    return this._progress()[`${seriesId}|${seasonIndex}|${episode}`] ?? 0;
+  }
+
+  /** Most recent unfinished episode in a season — drives the detail screen's Resume button. */
+  resumeEpisode(seriesId: string, seasonIndex: number): number | null {
+    const watched = this.lastWatched(seriesId, seasonIndex);
+    return watched ? watched.episode : null;
+  }
+
+  /**
+   * STUB for `users/{uid}/progress/{entryId}_{ep}` (README.md "Firestore").
+   * Called by the watch screen per the "Progress rules" in README.md
+   * "State model" — every ~10s while playing, plus on pause/seek/route
+   * leave/`visibilitychange`, never every tick.
+   */
+  setEpisodeProgress(seriesId: string, seasonIndex: number, episode: number, fraction: number): void {
+    const key = `${seriesId}|${seasonIndex}|${episode}`;
+    const clamped = Math.max(0, Math.min(1, fraction));
+    this._progress.update((progress) => ({ ...progress, [key]: clamped }));
   }
 
   addRecentSearch(term: string): void {
