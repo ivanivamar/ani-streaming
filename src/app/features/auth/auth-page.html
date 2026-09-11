@@ -1,0 +1,56 @@
+<div class="auth">
+  <div class="auth__panel">
+    <div class="auth__logo">
+      ani<span class="auth__logo-dot">.</span><span class="auth__logo-rest">stream</span>
+    </div>
+
+    <h1 class="auth__heading">{{ title() }}</h1>
+    <p class="auth__subline">Private instance · Firebase Authentication</p>
+
+    <form class="auth__form" (submit)="$event.preventDefault(); submit()">
+      @if (isRegister()) {
+        <label class="field">
+          <span class="field__label">Display name</span>
+          <input
+            class="field__input"
+            type="text"
+            placeholder="Your display name"
+            [value]="name()"
+            (input)="name.set($any($event.target).value)"
+          />
+        </label>
+      }
+
+      <label class="field">
+        <span class="field__label">Email</span>
+        <input
+          class="field__input"
+          type="email"
+          placeholder="you@example.com"
+          [value]="email()"
+          (input)="email.set($any($event.target).value)"
+        />
+      </label>
+
+      <label class="field">
+        <span class="field__label">Password</span>
+        <input
+          class="field__input"
+          type="password"
+          placeholder="••••••••"
+          [value]="password()"
+          (input)="password.set($any($event.target).value)"
+        />
+      </label>
+
+      @if (error()) {
+        <p class="auth__error">{{ error() }}</p>
+      }
+
+      <button type="submit" class="auth__submit" [disabled]="pending()">
+        {{ pending() ? 'Please wait…' : cta() }}
+      </button>
+      <button type="button" class="auth__switch" (click)="toggleMode()">{{ switchCopy() }}</button>
+    </form>
+  </div>
+</div>

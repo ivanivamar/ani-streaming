@@ -1,0 +1,27 @@
+# Build output (Angular app + server — matches at any depth)
+dist
+.angular/cache
+/tmp
+
+# Dependencies (Angular app + server)
+node_modules
+
+# Env / secrets — keep .env.example committed as the template
+.env
+.env.*
+!.env.example
+firebase-debug.log
+.firebase/
+*.serviceAccountKey.json
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log

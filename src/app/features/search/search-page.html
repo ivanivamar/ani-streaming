@@ -1,0 +1,79 @@
+<app-shell [searchActive]="true" [query]="query()" (queryChange)="setQuery($event)">
+  <div class="search">
+    <div class="filters">
+      <div class="filter-group">
+        <div class="filter-group__label">Audio</div>
+        <div class="filter-group__options">
+          @for (option of audioOptions; track option) {
+            <button
+              type="button"
+              class="filter-pill"
+              [class.filter-pill--active]="audio() === option"
+              (click)="setAudio(option)"
+            >
+              {{ option }}
+            </button>
+          }
+        </div>
+      </div>
+      <div class="filter-group">
+        <div class="filter-group__label">Quality</div>
+        <div class="filter-group__options">
+          @for (option of qualityOptions; track option) {
+            <button
+              type="button"
+              class="filter-pill"
+              [class.filter-pill--active]="quality() === option"
+              (click)="setQuality(option)"
+            >
+              {{ option }}
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="cli-hint">{{ cliLine() }}</div>
+
+    <div class="results-heading">
+      <h2 class="results-heading__title">Results</h2>
+      <span class="results-heading__count">{{ resultCountLabel() }}</span>
+    </div>
+
+    @if (loading()) {
+      <div class="poster-grid" aria-hidden="true">
+        @for (i of [0, 1, 2, 3, 4, 5, 6, 7]; track i) {
+          <div class="skeleton-tile"></div>
+        }
+      </div>
+    } @else if (hasError()) {
+      <div class="error-card">
+        <div class="error-card__header">
+          <span class="error-card__dot"></span>
+          <h3 class="error-card__title">Source unavailable</h3>
+        </div>
+        <p class="error-card__body">
+          ani-cli could not reach allanime. This is a problem with the upstream source, not with your
+          query — the site may be down, blocking requests, or its page structure may have changed.
+        </p>
+        <div class="error-card__code">exit 1 · allanime: no results returned
+hint: ani-cli -U to update the scraper</div>
+        <div class="error-card__actions">
+          <button type="button" class="error-card__retry" (click)="retry()">Retry</button>
+          <button type="button" class="error-card__back" (click)="goHome()">Back to favourites</button>
+        </div>
+      </div>
+    } @else if (noResults()) {
+      <div class="empty-state">
+        No titles matched.
+        <div class="empty-state__hint">try a shorter query</div>
+      </div>
+    } @else {
+      <div class="poster-grid">
+        @for (card of results(); track card.entryId) {
+          <app-poster-card [card]="card" (opened)="openCard($event)" />
+        }
+      </div>
+    }
+  </div>
+</app-shell>

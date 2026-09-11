@@ -1,0 +1,63 @@
+<header class="topbar">
+  <button type="button" class="wordmark" (click)="goHome()">
+    ani<span class="wordmark__dot">.</span><span class="wordmark__rest">stream</span>
+  </button>
+
+  <div class="topbar__center">
+    @if (searchActive()) {
+      <div class="search search--active">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" class="search__icon">
+          <circle cx="7" cy="7" r="5" stroke="#9a9aa2" stroke-width="1.6" />
+          <line x1="10.8" y1="10.8" x2="14" y2="14" stroke="#9a9aa2" stroke-width="1.6" stroke-linecap="round" />
+        </svg>
+        <input
+          #searchInput
+          class="search__input"
+          type="text"
+          placeholder="Search anime…"
+          autofocus
+          [value]="query()"
+          (input)="onQueryInput($event)"
+        />
+        @if (query()) {
+          <button type="button" class="search__clear" aria-label="Clear search" (click)="clearQuery()">×</button>
+        }
+      </div>
+    } @else {
+      <button type="button" class="search" (click)="goSearch()">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" class="search__icon">
+          <circle cx="7" cy="7" r="5" stroke="#61616a" stroke-width="1.6" />
+          <line x1="10.8" y1="10.8" x2="14" y2="14" stroke="#61616a" stroke-width="1.6" stroke-linecap="round" />
+        </svg>
+        <span class="search__placeholder">Search anime…</span>
+        <span class="search__kbd">/</span>
+      </button>
+    }
+  </div>
+
+  <div class="profile">
+    <button
+      type="button"
+      class="avatar"
+      (click)="toggleProfile()"
+      [attr.aria-expanded]="profileOpen()"
+      aria-label="Account menu"
+    >
+      {{ initials() }}
+    </button>
+
+    @if (profileOpen()) {
+      <div class="popover">
+        <div class="popover__header">
+          <div class="avatar avatar--lg">{{ initials() }}</div>
+          <div class="popover__identity">
+            <div class="popover__name">{{ user()?.displayName }}</div>
+            <div class="popover__email">{{ user()?.email }}</div>
+          </div>
+        </div>
+        <div class="popover__divider"></div>
+        <button type="button" class="logout" (click)="logout()">Log out</button>
+      </div>
+    }
+  </div>
+</header>
