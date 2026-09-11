@@ -77,9 +77,12 @@ export class Topbar {
     this.profileOpen.update((open) => !open);
   }
 
-  logout(): void {
+  async logout(): Promise<void> {
     this.profileOpen.set(false);
-    this.auth.signOut();
+    // Await the real sign-out (network + persisted-session clearing) before
+    // navigating — otherwise guestGuard can still see the stale signed-in
+    // state and bounce this navigation straight back to "/".
+    await this.auth.signOut();
     this.router.navigate(['/auth']);
   }
 

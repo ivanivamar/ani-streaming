@@ -1,92 +1,83 @@
 <app-shell>
-  <div class="detail">
-    <button type="button" class="back-btn" (click)="goBack()">
-      <span class="back-btn__arrow">←</span> Back
-    </button>
+	<div class="detail">
+		<button type="button" class="back-btn" (click)="goBack()">
+			<i class="material-symbols-outlined">arrow_back</i>
+			Back
+		</button>
 
-    @if (loading()) {
-      <div class="hero hero--skeleton" aria-hidden="true">
-        <div class="skeleton skeleton--poster"></div>
-        <div class="hero__info">
-          <div class="skeleton skeleton--line skeleton--title"></div>
-          <div class="skeleton skeleton--line skeleton--meta"></div>
-          <div class="skeleton skeleton--line"></div>
-          <div class="skeleton skeleton--line skeleton--short"></div>
-        </div>
-      </div>
-      <div class="episode-grid" aria-hidden="true">
-        @for (i of [0, 1, 2, 3, 4, 5]; track i) {
-          <div class="skeleton skeleton--row"></div>
-        }
-      </div>
-    } @else if (notFound()) {
-      <div class="not-found">
-        Anime not found.
-        <div class="not-found__hint">it may have been removed from the source</div>
-      </div>
-    } @else if (series(); as series) {
-      <div class="hero">
-        <div class="hero__poster" [style.background]="series.color">
-          <div class="hero__poster-overlay"></div>
-        </div>
-        <div class="hero__info">
-          <h1 class="hero__title">{{ series.title }}</h1>
-          <div class="hero__meta">{{ series.year }} · {{ series.status }}</div>
-          <div class="hero__genres">
-            @for (genre of series.genres; track genre) {
-              <span class="genre-chip">{{ genre }}</span>
-            }
-          </div>
-          <p class="hero__synopsis">{{ series.synopsis }}</p>
-          <div class="hero__actions">
-            <button type="button" class="btn-play" (click)="play()">{{ playLabel() }}</button>
-            <button
-              type="button"
-              class="btn-favourite"
-              [class.btn-favourite--active]="isFavourite()"
-              (click)="toggleFavourite()"
-            >
-              {{ isFavourite() ? 'Saved ✓' : '+ Add to favourites' }}
-            </button>
-          </div>
-        </div>
-      </div>
+		@if (loading()) {
+		<div class="hero hero--skeleton" aria-hidden="true">
+			<div class="skeleton skeleton--poster"></div>
+			<div class="hero__info">
+				<div class="skeleton skeleton--line skeleton--title"></div>
+				<div class="skeleton skeleton--line skeleton--meta"></div>
+				<div class="skeleton skeleton--line"></div>
+				<div class="skeleton skeleton--line skeleton--short"></div>
+			</div>
+		</div>
+		<div class="episode-grid" aria-hidden="true">
+			@for (i of [0, 1, 2, 3, 4, 5]; track i) {
+			<div class="skeleton skeleton--row"></div>
+			}
+		</div>
+		} @else if (notFound()) {
+		<div class="not-found">
+			Anime not found.
+			<div class="not-found__hint">it may have been removed from the source</div>
+		</div>
+		} @else if (series(); as series) {
+		<div class="hero">
+			<div class="hero__poster" [style.background]="series.color">
+				<div class="hero__poster-overlay"></div>
+			</div>
+			<div class="hero__info">
+				<h1 class="hero__title">{{ series.title }}</h1>
+				<div class="hero__meta">{{ series.year }} · {{ series.status }}</div>
+				<div class="hero__genres">
+					@for (genre of series.genres; track genre) {
+					<span class="genre-chip">{{ genre }}</span>
+					}
+				</div>
+				<p class="hero__synopsis">{{ series.synopsis }}</p>
+				<div class="hero__actions">
+					<button type="button" class="btn-play" (click)="play()">{{ playLabel() }}</button>
+					<button type="button" class="btn-favourite" [class.btn-favourite--active]="isFavourite()"
+						(click)="toggleFavourite()">
+						<i class="material-symbols-outlined">
+							{{ isFavourite() ? 'favorite' : 'favorite_border' }}
+						</i>
+					</button>
+				</div>
+			</div>
+		</div>
 
-      <div class="seasons">
-        @for (s of series.seasons; track s.entryId; let i = $index) {
-          <button
-            type="button"
-            class="season-pill"
-            [class.season-pill--active]="selectedSeasonIndex() === i"
-            (click)="selectSeason(i)"
-          >
-            {{ s.seasonLabel }}
-          </button>
-        }
-      </div>
+		<div class="seasons">
+			@for (s of series.seasons; track s.entryId; let i = $index) {
+			<button type="button" class="season-pill" [class.season-pill--active]="selectedSeasonIndex() === i"
+				(click)="selectSeason(i)">
+				{{ s.seasonLabel }}
+			</button>
+			}
+		</div>
 
-      <div class="episode-note">{{ season()?.episodeCount }} episodes · each season is a separate ani-cli entry</div>
+		<div class="episode-note">{{ season()?.episodeCount }} episodes · each season is a separate ani-cli entry</div>
 
-      <div class="episode-grid">
-        @for (row of episodeRows(); track row.episode) {
-          <button
-            type="button"
-            class="episode-card"
-            [class.episode-card--watched]="row.watched"
-            (click)="openEpisode(row.episode)"
-          >
-            <span class="episode-card__number" [style.background]="series.color">{{ row.padded }}</span>
-            <span class="episode-card__body">
-              <span class="episode-card__label">Episode {{ row.episode }}</span>
-              @if (row.hasProgress) {
-                <span class="episode-card__progress-track">
-                  <span class="episode-card__progress-fill" [style.width.%]="row.percent"></span>
-                </span>
-              }
-            </span>
-          </button>
-        }
-      </div>
-    }
-  </div>
+		<div class="episode-grid">
+			@for (row of episodeRows(); track row.episode) {
+			<button type="button" class="episode-card" [class.episode-card--watched]="row.watched"
+				(click)="openEpisode(row.episode)">
+				<span class="episode-card__number" [style.background]="series.color">{{ row.padded }}</span>
+				<span class="episode-card__body">
+					<span class="episode-card__label">Episode {{ row.episode }}</span>
+					@if (row.hasProgress) {
+					<span class="episode-card__progress-track">
+						<span class="episode-card__progress-fill" [style.width.%]="row.percent"></span>
+					</span>
+					}
+				</span>
+			</button>
+			}
+		</div>
+		}
+	</div>
 </app-shell>
