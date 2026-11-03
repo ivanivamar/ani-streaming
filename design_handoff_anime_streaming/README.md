@@ -1,30 +1,39 @@
-# Handoff: ani.stream — private anime streaming web app
+# Handoff: ani.stream v3 — private anime streaming web app
 
 ## Overview
 
-A private, single-user anime streaming web app. Content discovery and playback come from
-**ani-cli**-style scraping of allanime; user data (account, favourites, recently searched, watch
-progress) lives in **Firebase**. Target stack: **Angular 22** frontend + **Node** backend,
-Firebase Hosting + Cloud Run.
+A private, dark-mode anime streaming web app. Discovery, playback and downloads come from
+**ani-cli**-style scraping of allanime. User data (account, library, favourites, watch progress,
+history, preferences, notifications) lives in **Firebase** (Auth + Firestore). Metadata ani-cli
+can't provide (covers, synopsis, genres, airing schedule) comes from **AniList**.
 
-Five views: auth, home (favourites), search, anime detail, watch.
+Target stack: **Angular** (standalone components, signals, AngularFire) + **Node** backend,
+Firebase Hosting + Cloud Run. Repo: `ivanivamar/my-streaming` (currently empty).
+
+Views: Sign in → Welcome, Home, Search, Anime detail, Watch (player), Library, New releases,
+Import, Downloads, Settings.
 
 ## About the design files
 
-`Anime Streaming.dc.html` (+ `support.js`, which is only its runtime) is a **design reference
-created in HTML** — a clickable prototype showing intended look and behavior. It is not
-production code to copy. Recreate it in Angular using that project's conventions
-(standalone components, signals, AngularFire). Open the HTML directly in a browser to click
-through it.
+`Anime Streaming v3.dc.html` is a **design reference created in HTML** — a clickable prototype
+of the intended look and behavior, not production code. Recreate it in the Angular app using
+that project's conventions. Open the file directly in a browser (it needs `support.js` beside it;
+`support.js` is only the prototype runtime). Every view is reachable by clicking through:
+sign in with Google → Start watching → sidebar.
 
-The prototype fakes its data with an in-file `CATALOG` constant. Ignore that; the real data
-contract is in `data-sources.md` and the API section below.
+The prototype fakes data with in-file constants (`CATALOG`, `EP_COUNTS`, `LIB`, `SCHEDULE`,
+`PREMIERES`, `DL_JOBS`, …) at the top of the `<script data-dc-script>` block. Use them to
+understand shapes, not as data. The real contract is in the Backend and Firestore sections below
+and in `data-sources.md`.
+
+Inline styles in the prototype are the source of truth for exact values — when this README and
+the file disagree, the file wins.
 
 ## Fidelity
 
-**High-fidelity.** Colors, typography, spacing, radii and interaction states are final. Recreate
-them precisely. The only intentionally unfinished part is artwork: posters and episode
-thumbnails are flat color tiles, standing in for AniList cover images.
+**High-fidelity.** Colors, type, spacing, radii, motion and states are final. The only
+placeholders are artwork: posters and episode thumbnails are oklch gradients standing in for
+AniList cover images, and the player shows a gradient instead of video.
 
 ---
 
@@ -32,279 +41,365 @@ thumbnails are flat color tiles, standing in for AniList cover images.
 
 ### Color
 
+Accent is a mint green, `oklch(0.84 0.14 155)` ≈ **#5fe0a0**. **No translucency on surfaces**:
+cards, popovers, panels and the sidebar are opaque. Alpha is only used for hairline borders,
+overlays on artwork, and the player chrome over video.
+
 | Token | Value | Use |
 | --- | --- | --- |
-| bg | `#0b0b0c` | page background |
-| surface | `#151517` | cards, inputs, popovers, search bar |
-| surface-alt | `#131315` | episode rows |
-| surface-hover | `#191a1d` | row/input hover |
-| code-bg | `#0e0e10` | monospace code block in the error state |
-| border | `rgba(255,255,255,0.06–0.10)` | hairlines; 0.06 rows, 0.07 tiles, 0.08 header, 0.10 inputs |
-| border-hover | `rgba(255,255,255,0.14–0.28)` | hover / focus borders |
-| text | `#ececee` | primary text |
-| text-2 | `#a5a5ad` | body copy, genre chips |
-| text-3 | `#8b8b93` | labels, secondary |
-| text-4 | `#7a7a82` / `#6c6c74` | card meta, muted |
-| text-5 | `#61616a` / `#5c5c64` / `#54545c` | placeholders, CLI hints |
-| accent | `oklch(0.84 0.14 155)` (mint) | primary buttons, active pills, progress fill |
+| app-bg | `#0a0b0d` | desktop shell behind the inset panel, auth page |
+| panel-bg | `#111216` | main inset content panel, body |
+| surface | `#16171b` | cards, rows, settings groups, segmented tracks |
+| surface-2 | `#1a1b1f` | inputs, popovers, dropdown triggers, search bar |
+| surface-hover | `#1c1d22` / `#202126` | card/row hover, trigger hover |
+| menu-bg | `#1c1d21` | dropdown + context menu |
+| menu-selected | `#24252a` | selected option, disabled button bg |
+| chip-dark | `#121316` | opaque pills on posters (episode label, ⋯ button) |
+| today-bg | `#141a17` | today column in releases |
+| success-bg | `#14201a` / `#16211b` | import done banner, drag-over zone, selected welcome card |
+| border | `rgba(255,255,255,0.06–0.10)` | hairlines (0.07 cards, 0.10 posters/menus) |
+| border-strong | `rgba(255,255,255,0.12–0.16)` | outline buttons |
+| border-hover | `rgba(255,255,255,0.28)` | hover on pills/outline buttons |
+| text | `#ececee` | primary |
+| text-2 | `#d8d8dc` / `#c9c9cf` | secondary buttons, subheads |
+| text-3 | `#a5a5ad` | body copy, inactive pills |
+| text-4 | `#8b8b93` | labels, inactive nav, descriptions |
+| text-5 | `#7a7a82` | card meta |
+| text-6 | `#61616a` / `#5c5c64` / `#54545c` | mono counts, CLI hints |
+| accent | `oklch(0.84 0.14 155)` | primary buttons, active pills, progress, active nav icon |
 | accent-hover | `oklch(0.9 0.13 155)` | |
-| accent-border | `oklch(0.5 0.1 155)` | saved-state outline |
+| accent-text | `oklch(0.86 0.13 155)` | mint text on dark |
+| accent-border | `oklch(0.5 0.1 155)` | saved / active-download outline |
+| accent-tint | `oklch(0.84 0.14 155 / 0.14)` | selected chip fill |
 | on-accent | `#08110c` | text on mint |
-| danger | `#ff7a7a` | error dot |
-| danger-border | `rgba(255,140,140,0.22)` | error card border |
-| logout-hover | bg `rgba(255,90,90,0.1)`, border `rgba(255,120,120,0.35)`, text `#ff9d9d` | |
+| info | `oklch(0.78 0.11 235)` | "Plan to watch", "Waiting in queue", UPCOMING tag |
+| warn | `oklch(0.7 0.12 75)` | import "needs review" outline |
+| danger | `#ff9d9d` text, `oklch(0.62 0.17 25)` armed button, `#ff7a7a` dot | |
+| dropped | `oklch(0.72 0.14 25)` | Library "Dropped" |
+| completed | `#b9b9c0` | Library "Completed" |
 
-Poster tile colors (placeholders for AniList covers): `#3d3a34`, `#3a3128`, `#2e3a3c`,
-`#3c2f2f`, `#2b3339`, `#39343f`, `#2f3a35`, `#333540`, `#3e3440`, `#37372c`.
-Tile overlay: `linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.35))`.
+Library status dots: Watching = accent, Plan to watch = info, Completed = `#b9b9c0`,
+Dropped = `oklch(0.72 0.14 25)`.
+
+Avatar: `linear-gradient(150deg,#2f4a3c,#1b1e1c)`, 1px `rgba(255,255,255,0.14)` border,
+initials in `oklch(0.86 0.11 155)` 600. Google badge (white circle with G logo) on bottom-right
+in welcome + settings.
+
+Poster placeholder: `linear-gradient(160deg, oklch(0.56 0.11 H), oklch(0.32 0.07 H+25) 60%, oklch(0.2 0.04 H+40))`
+with a per-title hue. Overlay on poster cards:
+`radial-gradient(120% 70% at 20% 0%, rgba(255,255,255,.16), transparent 55%), linear-gradient(180deg, transparent 55%, rgba(0,0,0,.55))`.
 
 ### Typography
 
-- **Sora** (Google Fonts, weights 300/400/500/600/700) — all UI.
-- **JetBrains Mono** (400/500) — CLI hints, episode numbers, counts, timecodes, the error log.
+- **Sora** (300/400/500/600/700) — all UI.
+- **JetBrains Mono** (400/500) — counts, episode numbers, timecodes, CLI lines, kbd hints, section eyebrows.
 
-| Role | Size / weight |
+| Role | Spec |
 | --- | --- |
-| page title (Favourites) | `clamp(22px, 3vw, 30px)` / 600, `letter-spacing:-0.025em` |
-| anime title | `clamp(26px, 4vw, 40px)` / 600, `-0.03em`, `line-height:1.1` |
-| auth heading | 22px / 600, `-0.02em` |
-| logo | 20px (22px on auth); "ani" 600, "stream" 300 |
-| body / synopsis | 14.5px / 400, `line-height:1.65`, `max-width:64ch` |
-| card title | 14px / 500, `line-height:1.35` |
-| card meta | 12px, text-4 |
-| buttons | 13.5–14px / 500–600 |
-| chips, pills | 12–12.5px / 500 |
-| field label | 12px, text-3 |
-| mono hints | 10.5–12px |
-| subtitle overlay | `clamp(16px, 2.2vw, 26px)` / 500, white, `text-shadow: 0 2px 6px rgba(0,0,0,.9), 0 0 2px rgba(0,0,0,.9)` |
+| Page title (h1) | `clamp(22px,3vw,30px)` / 600 / `-0.025em` |
+| Section title (h2) | `clamp(18px,2.2vw,22px)` / 600 / `-0.02em` |
+| Anime title | `clamp(26px,4vw,40px)` / 600 / `-0.03em` / lh 1.1 |
+| Auth heading | `clamp(24px,2.6vw,30px)` / 600 |
+| Logo | 20px; "ani" 600 `#ececee`, "." accent, "stream" 300 `#8b8b93` |
+| Body / synopsis | 14–14.5px, lh 1.6–1.65, max 62–68ch |
+| Card title | 15px / 600 / `-0.01em` / lh 1.35 |
+| Card meta | 12px `#7a7a82` |
+| Nav item | 14px / 500 |
+| Buttons | 13–15px / 500–600 |
+| Pills | 12.5–13.5px / 500 |
+| Mono eyebrow | 10.5–11px, `letter-spacing:.08em`, uppercase |
+| Episode tile number | 34px / 700 / `-0.05em` |
 
-### Radius / shadow / motion
+### Radius
 
-- Radius: 6–8px small tiles, 9–10px buttons and inputs, 11–12px cards and rows, 14px hero
-  poster and error card, `999px` pills and chips, 50% avatar.
-- Shadows: popovers `0 24px 48px rgba(0,0,0,0.55)`; drawer/menus over video `0 20px 44px rgba(0,0,0,0.6)`.
-- Animations: `fade` 0.2s ease-out on route change; `pop` 0.14–0.16s ease-out for popovers
-  (opacity + `translateY(-8px) scale(.98)`); `slidein` 0.2s ease-out for the episode drawer
-  (`translateX(100%)` → 0).
-- Page gutters: `clamp(16px, 4vw, 40px)`; main content `max-width:1360px`, centered, top padding
-  `clamp(24px, 4vw, 44px)`, bottom 80px.
+8–10px small buttons and inputs · 11–12px menus, primary buttons · 14px rows, popovers ·
+16px poster tiles and cards · 18px settings groups and the inset panel · 20px upload zone and
+download composer · 22px hero card and player episode popup · 999px pills, chips, search bar ·
+50% avatars and round icon buttons.
 
-### Responsive
+### Shadow
 
-No media queries — the layout is fluid by construction. Poster grids are
-`repeat(auto-fill, minmax(152px, 1fr))` (Compact tweak: 118px) with `gap: clamp(14px, 2vw, 22px)`.
-Episode grid is `repeat(auto-fill, minmax(180px, 1fr))`. The anime hero is a wrapping flex row
-(poster `clamp(150px, 26vw, 216px)`, text column `min-width:260px`). Player controls wrap.
-Keep this approach in Angular; verify at 390px width.
+Popover `0 24px 48px rgba(0,0,0,.55)` · menu `0 20px 44px rgba(0,0,0,.6)` · poster
+`0 14px 34px -10px rgba(0,0,0,.6)` · hero `0 24px 50px -16px rgba(0,0,0,.65)` · player popup
+`0 30px 80px -10px rgba(0,0,0,.75)` · search focus ring `0 0 0 4px oklch(0.84 0.14 155 / .12)`.
+
+### Spacing
+
+Page gutters `clamp(16px,3vw,40px)`; header top `clamp(18px,2.6vw,30px)`; main top
+`clamp(24px,3vw,36px)`, bottom 64px desktop / 112px mobile (clears bottom nav). Section gap on
+home `clamp(40px,5vw,60px)`. Poster grid `repeat(auto-fill, minmax(196px,1fr))` (Compact density:
+150px), gap `clamp(16px,2.2vw,28px)`.
+
+---
+
+## App shell
+
+**Desktop (≥760px): collapsible inset sidebar.**
+- Shell bg `#0a0b0d`, `height:100vh`. Sidebar is transparent, sticky, 236px (railed: 72px),
+  `transition: width .2s ease`, padding `20px 12px 14px`.
+- Sidebar head: logo + collapse button (32px, panel icon). Railed: logo hidden, button centered.
+- Nav: Home, Library, New releases, Import, Download. Items 42px tall, radius 10, gap 12.
+  Active: bg `rgba(255,255,255,.07)`, text `#ececee`, icon accent. Inactive: `#8b8b93`, icon
+  `#7a7a82`. Railed: icon only, `title` tooltip.
+- Bottom: account button (`#16171b`, radius 12, 34px avatar + name + email + up/down chevron)
+  opens the profile popover (248px, `left:14px; bottom:78px`): avatar, name, email, divider,
+  **Settings**, **Log out** (red hover `rgba(255,90,90,.1)` / `#ff9d9d`).
+- Content is an **inset panel**: `margin:10px 10px 10px 0`, radius 18, 1px
+  `rgba(255,255,255,.07)` border, bg `#111216`, own scroll container. Background layer sits inside it.
+
+**Mobile (<760px): bottom nav.** No sidebar, no inset panel; page scrolls normally. Logo appears
+left of the search bar. Fixed bottom nav, 6 equal columns (5 nav items + Profile avatar),
+`#0e0f12`, top hairline, 54px min targets, 10.5px labels, safe-area padding. Profile popover
+anchors `right:10px; bottom: calc(76px + env(safe-area-inset-bottom))`.
+
+**Header (all chrome pages):** pill search bar, max 620px, 48px, radius 999, `#1a1b1f`.
+Focus: bg `#1f2025`, border `oklch(0.84 0.14 155 / .55)`, focus ring, icon goes mint. Right side
+shows a `/` kbd badge when empty, a round clear `×` when filled. Pressing `/` anywhere focuses it.
+- Focus + empty → dropdown "Recent searches" (clock icon, term, per-row × remove).
+- Typing → up to 5 suggestions (32×46 poster, title, `N episodes · year`), divider, then
+  "See all results for "q"" with an `Enter` kbd. Enter → Search page, term pushed to recent (max 6).
+- Esc blurs. Click-outside closes.
+
+**Background ("Waves", default).** Fixed, `pointer-events:none`, behind content. Two radial
+glows (green top-right `oklch(0.42 0.09 160 / .2)`, violet bottom-left `oklch(0.38 0.07 265 / .17)`)
+plus two SVG bands of flowing sine lines: band A 16 lines, green `oklch(0.84 0.14 155 / .26)`,
+drifting left over 140s; band B 14 lines, violet `oklch(0.78 0.11 265 / .22)`, drifting the
+opposite way over 180s. 1.2px non-scaling strokes, center lines most opaque. SVG is 200% wide and
+translates −50% for a seamless loop. See `bg('Waves')` in the file for the exact path math.
+Alternates kept as tweaks: Poster drift, Dot grid, Halftone.
 
 ---
 
 ## Screens
 
-### 1. Auth — `/auth`
+### 1. Sign in — `/auth`
+Two-column wrapping flex on `#0a0b0d`. Left (flex 1 1 480px, sticky full height; 300px tall on
+mobile): **poster drift mosaic** — 5 columns (4 mobile) of poster tiles, rotated −6°, scaled
+1.12, alternating columns scrolling up/down (70s + 9s per column), with a dark gradient overlay
+and the large logo + "Stream, track and download anime from one library. Powered by ani-cli."
+bottom-left.
 
-Single centered column, `max-width:380px`, vertically centered in the viewport.
+Right: 360px column. "Sign in", one line of copy, then a single white **Continue with Google**
+button (52px, radius 12, `#1f1f1f` text, G logo). While waiting: spinner + "Waiting for Google…"
+and a Cancel link. Cancel/popup closed → red notice "The Google window was closed before sign-in
+finished." Footer notes about shared data and approved accounts. **Google is the only provider.**
 
-Centered logo (22px) → heading (`Sign in` / `Create your account`) → subline
-"Private instance · Firebase Authentication" (13.5px, `#7a7a82`) → fields stacked with `gap:12px`
-→ mint submit button (full width, 12px padding) → text button toggling mode.
+### 2. Welcome (first sign-in)
+Same layout. Account chip (52px avatar + Google badge, name, email), "Welcome, Ivan", then
+defaults: **Audio** as two cards (Sub — "Japanese audio, subtitles" / Dub — "English audio";
+selected = accent border, `#16211b`), **Quality** segmented (Best/1080p/720p/480p). **Start
+watching** (mint, 50px) → Home. "Not you? Use another account" restarts Google flow. Shell enters
+with `opacity 0, scale .985 → 1`, 520ms.
 
-Fields: **Display name** (register only, placeholder "Ivan"), **Email** (`type=email`,
-"you@example.com"), **Password** (`type=password`, "••••••••"). Each is a label column with a
-12px `#8b8b93` caption above an input: `padding:11px 13px`, surface bg, 1px `rgba(255,255,255,.1)`
-border, radius 10px, 14px text, no outline.
+### 3. Home — `/`
+- **Continue watching**: title + mono "N in progress" + round prev/next carousel buttons. Row:
+  hero card (side-by-side `min(540px,48%)`, stacked on mobile) with large poster backdrop,
+  inner 132px poster, eyebrow "LAST WATCHED · 2h ago", title, "Season · Episode · N min left",
+  4px progress bar, mint Resume. Beside it a snap-scrolling carousel of 164px poster cards with
+  episode pill, ⋯ button and 3px progress bar.
+- **Recently added** (grid): NEW mint pill + `S1 · E24` pill, "Added 3h ago".
+- **Recently watched** (grid): progress bar if unfinished, "Finished · ago" otherwise.
+- Every card: hover `translateY(-4px)`; right-click or ⋯ opens the context menu (Resume/Watch
+  again, Start over, Go to anime, Mark as watched, Remove from history).
 
-Mode toggle copy: "No account yet? Create one" ⇄ "Already have an account? Sign in".
+### 4. Search — `/search`
+Uses the header search bar as input. Filter groups **Audio** (Sub/Dub) and **Quality**
+(best/1080/720/480/360/worst) as pills. Mono CLI line `$ ani-cli "q" [--dub] -q quality`
+(toggleable). "Results" + entry count. Poster grid with episode-count pill and a heart toggle
+(filled mint when favourited). Empty: "No titles matched." / "try a shorter query". **Source
+error** card (red dot, "Source unavailable", explanation, mono log, Retry + Back) replaces
+results when the backend reports an upstream failure.
 
-No topbar on this route. No password reset, no social providers.
+### 5. Anime detail — `/anime/:entryId`
+Back link, hero (216px poster, title, year • status, genre chips, synopsis, mint **Play E1 /
+Resume E7**, outline **+ Add to favourites ⇄ Saved ✓**). Season pills. Mono row:
+"N episodes · each season is a separate ani-cli entry" + "X / N watched". A 6px segmented
+progress strip (one clickable segment per episode: watched accent, partial `oklch(0.6 0.1 155)`,
+unwatched `rgba(255,255,255,.1)`).
 
-### 2. Home — `/`
+**Episode grid** `repeat(auto-fill,minmax(158px,1fr))`, gap 14: 16:10 tiles with per-episode
+gradient thumb, faint dot texture, "EP" + big number bottom-left. States: **up next** = accent
+border + glow ring + "▶ UP NEXT" or "▶ 42%" badge; **watched** = dimmed overlay + "✓" badge;
+partial = 3px progress bar. ani-cli provides no episode titles or durations.
 
-Topbar (see below), then:
+### 6. Watch — `/watch/:entryId/:ep`
+Full viewport, black, no chrome. Click video to play/pause. Top gradient bar: 34px back button,
+title, "Season · Episode". Hardsub sample line at `bottom:132px` (subs are burned in; drop this
+layer in production). Bottom gradient controls:
+- Scrub bar: 4px track, mint fill, 12px white knob, 16px hit area, click to seek.
+- Row: 40px white play/pause, **rewind 10 / forward 10** (circular arrow with "10" inside —
+  counter-clockwise for back, clockwise for forward), mono timecode, spacer, next episode,
+  episodes, fullscreen. Icon buttons 38px, radius 9, `rgba(255,255,255,.06)` + `.16` border.
+- **Episodes popup** (not a side drawer): anchored bottom-right above controls
+  (`right:clamp(12px,3vw,28px); bottom:96px`), `min(380px, 100%-24px)` wide, max 540px tall,
+  radius 22, opaque `#17181c`, `transform-origin: bottom right`, pop animation .22s. Header:
+  season name + mono "E07 of 25 · 6 watched", round close. Rows: 76px 16:10 thumb with number
+  and progress, "Episode N", status ("Now playing" mint / Watched / 42% watched / Not started).
+  Current row `#1d2420` with mint border and a 3-bar equalizer glyph. Click outside closes.
+- No CC button (no subtitle tracks from ani-cli).
 
-- Heading row: "Favourites" + mono "`N` saved".
-- Poster grid. Each card: 2:3 tile (radius 12, 1px `rgba(255,255,255,.07)`, gradient overlay),
-  mono episode/season label bottom-left at 11px `rgba(255,255,255,.68)`, and — when the entry has
-  unfinished progress — a 3px bar pinned to the tile bottom (`rgba(0,0,0,.45)` track, mint fill).
-  Below the tile: title (14px/500) and meta (`2013 · sub`) at 12px.
-  Whole card is a button; hover `opacity:.86`.
-- "Recently searched": uppercase 14px/500 `#8b8b93` label, then pill buttons
-  (`padding:8px 14px`, radius 999, surface bg) each prefixed with a mono `›`. Clicking runs
-  that search.
+### 7. Library — `/library`
+"Library" + count. Status pills with counts (All, Watching, Plan to watch, Completed, Dropped),
+sort dropdown (Recently watched / Title A–Z / Progress), grid/list toggle. Grid card: status pill
+with dot top-left, ⋯, `watched / total` pill, progress bar in status color. List row:
+44px poster, title, year · episodes, status, progress bar + count, "Watched ago", ⋯ (mobile
+collapses to poster/title/⋯). Context menu: Continue/Play/Watch again, Go to anime, Move to
+<status>, Remove. Empty: "Nothing in <filter> yet."
 
-### 3. Search — `/search`
+### 8. New releases — `/releases`
+Header with summary ("14 episodes this week · 9 out so far") and a segmented scope switch
+**Everything / My library**. Week section: title (This week / Last week / Next week / In N weeks),
+date range, prev/next. **7-column grid** (min 156px, horizontally scrollable with snap) of day
+columns; today highlighted (`#141a17`, mint border, "Today"). Each item: small poster, title (2-line
+clamp), `E09 · 14:00`, status (countdown "in 3h 20m", "Out now", "Watched", "Out now · not on
+allanime") and a bell toggle on upcoming items. A mint "now" line with current time is inserted
+in today's column. Changing week slides the grid in from the direction of travel (36px, .32s).
+**New seasons & premieres**: cards with UPCOMING (info) / OUT NOW (accent) tag, kind, date and
+a "Notify me ⇄ On" button.
 
-The topbar search field **becomes the input** on this route (autofocused, brighter border, a
-clear `×`). There is no second search bar in the page body.
+### 9. Import — `/import`
+Intro copy, then a dashed drop zone (files or folder; drag-over turns mint). Accepted
+MKV/MP4/WEBM/AVI. File names are parsed client-side (`[Group] Title - 05 (1080p).mkv`,
+`Title.S02E05.mkv`, `Title Ep 5`) and grouped by series+season, then matched to allanime
+entries via aliases. "Review files" with tabs All / Matched / Needs review / Not found and a
+select-all row. Each group row: checkbox, source name + meta (files, size, quality, group) →
+match (poster, entry title, tag "New to your library" / "Adds to your existing library entry"),
+or a "Which season is this?" dropdown (amber border), or "Not found on allanime" + Search.
+Episode chips show present (mint) vs missing (dashed) vs out of range (red), with a missing
+summary. Expandable file list with per-file remove. Sticky footer bar: summary, size, counts,
+**Upload N**. Uploading shows per-row progress; done shows a mint success banner + View library.
+See `parseVid` / `groupVids` in the file for the parsing rules.
 
-- Filter row (wraps, `gap:22px 32px`, bottom hairline). Two groups, each a mono uppercase
-  10.5px label over a row of pills: **Audio** = Sub / Dub; **Quality** = best / 1080 / 720 / 480 /
-  360 / worst. Active pill: mint bg, `#08110c` text. Inactive: transparent bg,
-  `rgba(255,255,255,.14)` border, `#a5a5ad` text.
-- CLI hint line (mono 11.5px `#54545c`): `$ ani-cli "<query>" [--dub] -q <quality>`. Reflects the
-  filters live. Can be hidden.
-- "Results" + mono count of **entries** (not titles — see season note).
-- Same poster grid as home.
-- Empty state: centered "No titles matched." + mono "try a shorter query".
-- **Error state** (replaces results): card `max-width:560px`, surface bg, danger border,
-  radius 14. Red dot + "Source unavailable"; paragraph explaining this is an upstream problem,
-  not a bad query; a mono code block on `#0e0e10` showing
-  `exit 1 · allanime: no results returned` / `hint: ani-cli -U to update the scraper`;
-  then **Retry** (mint) and **Back to favourites** (outline).
+### 10. Downloads — `/download`
+Header + disk usage bar (`~/Videos/ani-cli`, free space). Composer card: anime picker dropdown
+(poster, title, "N episodes · X downloaded · Y queued"), Sub/Dub segmented, quality dropdown with
+per-episode size estimate. Episode chip grid (42px min): selectable / selected (mint) /
+in queue (dashed mint) / downloaded (`#24252a`, disabled), with Select all / Unwatched / Clear and
+a legend. Footer shows the generated command (`$ ani-cli -d --dub -q 1080 -e "1-4 7" "Title"`)
+and **Download N episodes**. **Queue**: one job per request, one episode at a time; job card has
+status line ("Downloading E22 · 46% · 1m 12s left" / Paused / Waiting in queue), pause/resume,
+cancel, per-episode chips filling as a gradient, total bar and size. **On this device**: done
+entries with episode ranges, size, play offline, delete (red hover).
 
-### 4. Anime detail — `/anime/:entryId`
+### 11. Settings — `/settings` (from profile popover)
+Single scroll page, max 820px, sections stacked: **Account** (profile card with Google badge,
+Switch account, Sign out; Display name; Sign out everywhere), **Playback** (Audio seg, Quality
+dropdown, Autoplay next, Skip intros/outros via ani-skip, Resume, Mark watched at 80/90/95%),
+**Downloads** (folder → `ANI_CLI_DOWNLOAD_DIR`, download quality, delete after watching),
+**Data** (Export JSON, Clear watch history, Delete account). Rows in one `#16171b` radius-18 group
+with hairline dividers. Toggle: 44×26 track, mint on, knob `#08110c`. Destructive buttons need
+a second click ("Click again to confirm", red fill).
 
-- Back button (mono `←` + "Back").
-- Hero, wrapping flex: poster tile left; right column with title, `year · status` line,
-  genre chips (5px 11px, radius 999, `rgba(255,255,255,.1)` border), synopsis, then two buttons:
-  mint **Play E1** / **Resume E7** (resumes the most recent unfinished episode of the *current
-  season*), and an outline **+ Add to favourites** which becomes **Saved ✓** with mint text and
-  `oklch(0.5 0.1 155)` border.
-- **Season tabs as pills** (same pill styling as the filters), wrapping row.
-- Under the tabs, a mono note: `N episodes · each season is a separate ani-cli entry`.
-- Episode grid, `minmax(180px,1fr)`: each row is a card (surface-alt, 1px border, radius 11)
-  with a 38px colored rounded square holding the mono zero-padded number, then "Episode N".
-  If the episode has progress, a 3px mint bar sits under the label. Watched (≥98%) dims the
-  number to `rgba(255,255,255,.45)`.
-
-There are no episode titles, thumbnails or durations — ani-cli does not provide them.
-
-### 5. Watch — `/watch/:entryId/:ep`
-
-Full-viewport, black, **no topbar**. Layered:
-
-1. Video fills the frame. (Prototype uses `radial-gradient(120% 90% at 50% 40%, <tileColor>, #000)`
-   with a mono "VIDEO STREAM" label.)
-2. Click anywhere on the video toggles play/pause.
-3. Hardsub line sits `bottom:132px`, centered, `padding: 0 8vw`, `pointer-events:none`. This is
-   **not** a subtitle track — subs are burned into the stream. In production this layer only
-   exists if you add your own subtitles; otherwise drop it.
-4. Top bar over a `rgba(0,0,0,.75)` → transparent gradient: 34px back button (mono `←`, radius 9,
-   `rgba(255,255,255,.16)` border) + anime title (14.5px) and `Season 1 · Episode 7` (12px,
-   `rgba(255,255,255,.55)`).
-5. Bottom controls over a bottom-up black gradient, `padding: 52px clamp(16px,3vw,28px) 22px`:
-   - Scrub bar: 4px track `rgba(255,255,255,.2)`, mint fill, 12px white knob; click to seek
-     (16px tall hit area).
-   - Control row (wraps, `gap:10px`): 40px white play/pause square (black glyph); 38px icon
-     buttons for **−10s**, **+10s** (circular-arrow with "10"); mono timecode `6:52 / 23:40`;
-     spacer; then **next episode**, **episode drawer**, **fullscreen** icon buttons.
-     Icon buttons: `rgba(255,255,255,.06)` bg, `rgba(255,255,255,.16)` border, radius 9,
-     hover `rgba(255,255,255,.16)`. All icons are inline SVG; fullscreen swaps between
-     expand and contract paths.
-   - **No CC button.** Removed deliberately: ani-cli has no subtitle tracks.
-   - Episode drawer: right panel `min(360px, 86vw)`, `rgba(14,14,16,.97)`, left hairline,
-     header with season name + `×`, scrollable list of compact episode rows (34px number tile);
-     current episode row is `rgba(255,255,255,.1)`.
-
-### Topbar (home, search, anime)
-
-Sticky, `z-index:40`, `rgba(11,11,12,.82)` + `backdrop-filter: blur(14px)`, bottom hairline,
-`padding: 14px clamp(16px,4vw,40px)`.
-
-Left: wordmark **ani.stream** — "ani" `#ececee` 600, "." mint, "stream" 300 `#8b8b93`; navigates home.
-Center: search field, `max-width:460px` (520px when active), magnifier SVG on the left,
-mono `/` badge on the right as a keyboard hint (wire it up: pressing `/` focuses search).
-Right: 36px circular avatar with initials, mint text on `linear-gradient(150deg,#2c3a33,#1a1c1b)`.
-
-Avatar opens a 248px popover (`top:46px; right:0`, radius 14, `pop` animation): 40px avatar +
-`displayName` (14px) and email (12px, truncated), a full-bleed divider, then a full-width
-**Log out** button with the red hover treatment.
-
----
-
-## Interactions & behavior
-
-- Clicking the topbar search field navigates to `/search` and focuses the input.
-- A search result navigates to `/anime/:entryId` with that season's tab preselected.
-- Season pill switches the episode list and the resume button, without leaving the page.
-- Episode click opens the watch route seeked to stored progress.
-- Back from the player returns to the anime detail page, paused.
-- Next episode advances `ep` and resets position.
-- Fullscreen uses the Fullscreen API on the document element and swaps the icon.
-- Log out returns to `/auth` in sign-in mode and clears the password field.
-
-### States to implement
-
-| State | Where | Treatment |
-| --- | --- | --- |
-| Loading | search, detail | skeleton tiles/rows at the same grid geometry (not in the prototype — add) |
-| Empty results | search | "No titles matched." |
-| Source error | search | the error card described above |
-| Playback error | watch | not yet designed; reuse the error card centered over black |
-| No favourites | home | not yet designed; ask before inventing one |
+### Shared components
+- **Pill**: active mint/`#08110c`; inactive transparent, `rgba(255,255,255,.14)` border, `#a5a5ad`.
+- **Segmented**: track `#16171b`/`#111216` radius 10–11, 3px padding; active segment uses pill colors.
+- **Dropdown**: trigger 38px radius 9 `#1a1b1f` with chevron (rotates 180° open, border goes mint);
+  menu fixed-position `#1c1d21` radius 13, max 340px, optional title eyebrow, options with dot /
+  poster / sub-line, check on selected. Flips above the trigger if no room. Closes on scroll.
+- **Context menu**: 220px, title line, items with icons, separators, danger items red. Opens at
+  cursor, clamped to viewport. Right-click on any poster/row.
 
 ---
 
-## State model
+## Motion
 
-Prototype state, and what it maps to in production:
+All via Web Animations; skip entirely under `prefers-reduced-motion`.
+Easing `cubic-bezier(.2,.7,.2,1)` unless noted.
 
-| Prototype | Production |
+- **Page enter**: page `opacity 0, translateY(10px) → none`, 350ms. Children of each
+  `[data-stag]` group stagger: 350ms, delay `80 + i·28ms` (cap 900ms). On Anime detail:
+  260ms, delay `40 + i·10ms` (cap 360ms).
+- **Back navigation** reverses direction (`-10px` / `-8px`, drops from above). Depth order:
+  auth −1 · top-level pages 0 · search 1 · anime 2 · player 3.
+- **Open player**: a clone of the clicked poster/tile grows from its rect to full viewport
+  (720ms, `cubic-bezier(.65,0,.15,1)`, radius 14 → 0), fades to black from 45%, then the player
+  fades in (260ms) and the clone fades out.
+- **Leave player**: black overlay fades + scales to .94 over 380ms.
+- **Auth → app**: 520ms scale .985 → 1 fade.
+- **Popovers/menus**: `pop` — `opacity 0, translateY(-8px) scale(.98)` → none, 120–160ms ease-out.
+- **Releases week change**: grid slides in 36px from travel direction, 320ms.
+- Hover lifts: cards `translateY(-3/-4px)` 180ms; Google button `-1px`.
+- Background drifts are continuous linear loops (see App shell).
+
+---
+
+## State & data
+
+| Prototype state | Production |
 | --- | --- |
-| `route`, `animeId`, `season`, `ep` | Angular router params |
-| `query`, `audio`, `quality` | search route query params (shareable, back-button friendly) |
-| `favs: string[]` | Firestore `users/{uid}/favourites` |
-| `recent: string[]` | Firestore, capped at ~8, most recent first |
-| `progress: {"animeId\|season\|ep": 0..1}` | Firestore `users/{uid}/progress/{entryId}_{ep}` |
-| `t`, `playing`, `fs`, `drawerOpen` | player component signals only |
-| `email`, `pass`, `name`, `authMode` | reactive form + AngularFire |
+| `route`, `animeId`, `season`, `ep` | router params |
+| `query`, `audio`, `quality` | search query params; audio/quality defaults from prefs |
+| `authStep`, `authBusy`, `authErr` | AngularFire `signInWithPopup(GoogleAuthProvider)` |
+| `progress {"anime|season|ep": 0..1}`, `history` | `users/{uid}/progress` ordered by `updatedAt` |
+| `lib [{id, s, status, watched, ago}]` | `users/{uid}/library/{entryId}` |
+| `favs`, `recent` | `users/{uid}/favourites`, `users/{uid}/recent` (cap 6) |
+| `prefs` | `users/{uid}` doc `prefs` field |
+| `notify` | `users/{uid}/notify/{key}` |
+| `impGroups` | client state; upload to Storage, then `users/{uid}/localEpisodes` |
+| `dlJobs`, `dlDone` | backend job queue (server state), streamed via SSE/websocket |
+| `railed` | localStorage |
+| `t`, `playing`, `fs`, `drawerOpen` | player component signals |
 
-Progress rules: write every ~10s while playing plus on pause, seek, route leave and
-`visibilitychange` — **not** every tick as the prototype does. An episode counts as watched at
-`≥ 0.98`. "Resume" targets the most recent entry below that threshold **within the current
-season**.
-
----
+Rules: watched = progress ≥ 0.98 (or the user's threshold pref). "Resume" targets the most recent
+unfinished episode of the current season. Write progress every ~10s while playing and on pause,
+seek, route leave and `visibilitychange` — not every tick as the prototype does. First sign-in
+(no `users/{uid}` doc) routes to Welcome; later sign-ins go straight Home.
 
 ## Backend contract (Node)
 
-Prefer porting allanime scraping into Node over shelling out to the ani-cli script — the script
-is interactive (fzf/mpv) and awkward to drive as a subprocess. Behavior to match:
+Port allanime scraping to Node rather than shelling out to the interactive ani-cli script.
 
 | Endpoint | Returns |
 | --- | --- |
 | `GET /api/search?q=&dub=` | `[{ entryId, title, episodes }]` — one row per season entry |
 | `GET /api/episodes?entryId=&dub=` | `[episodeNumber]` |
-| `GET /api/sources?entryId=&ep=&dub=&q=` | `{ url, headers }` for the chosen quality |
-| `GET /api/proxy?url=` | streams m3u8 + segments with Referer/Origin re-added |
+| `GET /api/sources?entryId=&ep=&dub=&q=` | `{ url, headers }` |
+| `GET /api/proxy?url=` | m3u8 + segments with Referer/Origin re-added |
+| `POST /api/downloads` `{ entryId, eps[], dub, q }` | job id |
+| `GET /api/downloads` (SSE) | job + per-episode progress |
+| `PATCH/DELETE /api/downloads/:id` | pause/resume/cancel |
+| `GET /api/files`, `DELETE /api/files/:entryId` | on-device downloads, disk usage |
+| `GET /api/schedule?week=` | AniList airing schedule joined to allanime entries |
 
-Guard every route with a firebase-admin ID-token check; the instance is single-user, so reject
-any uid but yours. Surface upstream failures as a distinct status the UI maps to the
-"Source unavailable" state rather than to an empty result.
-
-Frontend playback: hls.js (native HLS is Safari-only).
-
-## Metadata
-
-ani-cli returns titles and episode counts only. Cover art, synopsis, genres, year and status must
-come from **AniList** (or Jikan) and be cached in Firestore, keyed by ani-cli entry id, so the
-fuzzy title match runs once. AniList `relations` (PREQUEL/SEQUEL) is also the cleanest way to
-group separate season entries under one detail page for the tabs. Full notes in
-`data-sources.md`.
+Guard all routes with a firebase-admin ID-token check and an allowlist of approved uids. Map
+upstream failures to a distinct status so the UI shows "Source unavailable", not empty results.
+Playback via hls.js. Skip intro/outro via ani-skip (AniSkip API) timestamps.
 
 ## Firestore
 
 ```
-users/{uid}                        { displayName, email, createdAt }
-users/{uid}/favourites/{entryId}   { title, addedAt }
-users/{uid}/recent/{id}            { term, at }
-users/{uid}/progress/{entryId}_{ep} { position, duration, updatedAt }
-meta/{entryId}                     { anilistId, title, cover, synopsis, genres, year, status, seasons[] }
+users/{uid}                          { displayName, email, photoURL, createdAt, prefs{audio,quality,autoplay,skip,resume,threshold,dlDir,autoDelete} }
+users/{uid}/library/{entryId}        { status, watched, updatedAt }
+users/{uid}/favourites/{entryId}     { addedAt }
+users/{uid}/progress/{entryId}_{ep}  { position, duration, updatedAt }
+users/{uid}/recent/{id}              { term, at }
+users/{uid}/notify/{key}             { title, ep?, at }
+users/{uid}/localEpisodes/{entryId}_{ep} { storagePath, size, fileName }
+meta/{entryId}                       { anilistId, title, cover, synopsis, genres, year, status, seasons[] }
 ```
 
-Rules: `match /users/{uid}/{doc=**} { allow read, write: if request.auth.uid == uid; }`,
-`meta` readable by any signed-in user, writable only by the backend. Disable sign-up in the
-Firebase console once your account exists.
+`users/{uid}/**` readable/writable only by that uid; `meta` readable by signed-in users,
+written by the backend only.
+
+## Prototype tweaks (not product features)
+
+`background` (Waves / Poster drift / Dot grid / Halftone), `heroLayout` (Side by side / Stacked),
+`sourceState` (Online / Source error — previews the error card), `showCliHints`, `density`
+(Comfortable / Compact). Ship Waves, side-by-side, CLI hints on, Comfortable.
+
+## States still to design
+
+Loading skeletons (same grid geometry), playback error in the player, empty home for a new user.
 
 ## Assets
 
-None to copy. Fonts are Google Fonts (Sora, JetBrains Mono). All icons are inline SVG in the
-prototype (magnifier, play, pause, skip ±10, next, list, fullscreen enter/exit) — replace with
-your icon library if the Angular app has one. Poster and episode tiles are flat colors standing
-in for AniList cover images.
+No image assets. Fonts: Google Fonts (Sora, JetBrains Mono). Icons are inline SVG paths in the
+file (nav icons in `NAV`, menu icons in `IC`, player controls inline) — swap for the app's icon
+set if it has one, keeping 1.7–1.8 stroke and round caps. Google "G" logo is the official
+4-color mark. Posters/thumbnails are placeholders for AniList covers.
 
 ## Files
 
-- `Anime Streaming.dc.html` — the prototype. Open in a browser; it needs `support.js` beside it.
-- `support.js` — prototype runtime only. Not part of the deliverable.
-- `data-sources.md` — what ani-cli can and cannot provide, and why the metadata API is required.
+- `Anime Streaming v3.dc.html` — the prototype (all screens). Open in a browser.
+- `support.js` — prototype runtime only; required to open the file, not part of the deliverable.
+- `data-sources.md` — what ani-cli can and cannot provide and why AniList is needed.
