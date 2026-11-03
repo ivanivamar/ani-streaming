@@ -2,9 +2,17 @@
   "name": "@ani/import",
   "version": "0.0.0",
   "private": true,
-  "description": "Encode + Drive upload + Firestore catalogue importer (PLAN.md Steps 1-2). Empty until Step 1.",
+  "description": "Encode + Drive upload + Firestore catalogue importer (PLAN.md Steps 1-2).",
   "type": "module",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "test-encode": "node src/cli.ts test-encode",
+    "typecheck": "tsc -p tsconfig.json"
+  },
   "dependencies": {
     "@ani/contracts": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
   }
 }
