@@ -1,6 +1,6 @@
 # ani.stream — revival plan (rev. 3, Nov 3, 2026)
 
-**Status: Step 0 done (Nov 3, 2026); next is Step 1 (test encodes).** Replaces the allanime / ani-cli approach (blocked by
+**Status: Steps 0 and 1 done (Nov 3, 2026); next is Step 2 (importer).** Replaces the allanime / ani-cli approach (blocked by
 purpose-built anti-scraping, see `claude/known-issue-api-sources-cloudflare.md`) with a library
 Ivan owns: his own episodes, compressed with ffmpeg, stored on Google Drive, streamed with range
 requests. Same model as the music app (Material Music).
@@ -206,6 +206,42 @@ are `./`-relative `paths`.
   and for Aoashi also the `copy` result (remux only) to compare.
 - Ivan watches on PC (Chrome/Edge) and phone; picks codec, settings and bitrate ceiling.
 - **Output:** chosen settings written back into this plan.
+
+### Result (Nov 3, 2026) — done
+
+`npm run test-encode -w @ani/import` (5-min clips, first 5:00 of each episode):
+
+| Variant | AoT S01E01 (BD HEVC 10-bit, 12.1 Mb/s avg) | Aoashi S01E01 (WEB **H.264 10-bit**, 3.6 Mb/s) |
+| --- | --- | --- |
+| `nvenc-cq22` | 7.53 Mb/s · 61% | 3.67 Mb/s · 93% |
+| `nvenc-cq24` | 6.32 Mb/s · 52% | 2.85 Mb/s · 72% |
+| `nvenc-cq26` | 4.95 Mb/s · 40% | 2.19 Mb/s · 56% |
+| `x265-crf20` | 4.76 Mb/s · 39% (0.25× realtime) | 1.68 Mb/s · 43% (0.61× realtime) |
+| `copy` | 19.2 Mb/s (OP section; avg 12.1) | n/a (H.264 10-bit) |
+
+NVENC runs at ~6× realtime for every CQ (limited by CPU decode of the source, not the GPU),
+so a 24-min episode encodes in ~4 min. Ivan saw no difference between any of the variants on
+PC or phone, so the choice is driven by size, speed and streaming:
+
+**Chosen encode settings**
+```
+-c:v hevc_nvenc -preset p7 -tune hq -rc vbr -cq 26 -b:v 0 -maxrate 8M -bufsize 16M
+-b_ref_mode middle -spatial-aq 1 -temporal-aq 1 -rc-lookahead 32
+-pix_fmt p010le -profile:v main10 -g 240 -tag:v hvc1
+-c:a aac -b:a 192k -ac 2          (Japanese track only; stream copy if already AAC ≤ 2 ch)
+-movflags +faststart
+```
+- **CQ 26:** smallest NVENC level, about the size of the x265 reference on AoT, no visible loss.
+  ~2–5 Mb/s → roughly 400–900 MB per 24-min episode.
+- **Ceiling 8 Mb/s** (`-maxrate 8M -bufsize 16M`): CQ 26 averages well under it, so it only
+  trims rare spikes (the AoT OP); keeps phone streaming on mobile data and Drive seeks predictable.
+- **GOP 240** (~10 s keyframes) for quick seeks over Drive range requests.
+- Note: current ffmpeg builds only accept `-spatial-aq` / `-temporal-aq` (hyphen), not underscores.
+
+**Copy rule for Step 2** (instead of re-encoding): copy the video only if it is H.264 8-bit
+4:2:0 or HEVC Main/Main 10 4:2:0, ≤ 1920×1080, **and** its average video bitrate ≤ 8 Mb/s.
+Everything else is encoded. Aoashi showed WEB releases can be **H.264 10-bit**, which browsers
+and phones can't hardware-decode, so bit depth must be checked, not just the codec.
 
 ## Step 2 — Importer (Phases 1a+, 1b, 1c)
 Node + TS script in `tools/import`, modelled on the music importer, using `firebase-admin`
