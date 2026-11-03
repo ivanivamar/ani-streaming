@@ -1,6 +1,6 @@
 # ani.stream — revival plan (rev. 3, Nov 3, 2026)
 
-**Status: plan only, no code written yet.** Replaces the allanime / ani-cli approach (blocked by
+**Status: Step 0 done (Nov 3, 2026); next is Step 1 (test encodes).** Replaces the allanime / ani-cli approach (blocked by
 purpose-built anti-scraping, see `claude/known-issue-api-sources-cloudflare.md`) with a library
 Ivan owns: his own episodes, compressed with ffmpeg, stored on Google Drive, streamed with range
 requests. Same model as the music app (Material Music).
@@ -183,6 +183,16 @@ schema is defined once.
   (`@catalog/*`, `@playback/*`, `@shared/*`, …).
 - Replace the old README/`data-sources.md` with this plan's architecture.
 - **Check:** `ng build`, `ng lint`, `ng test` pass on the empty skeleton.
+
+**Done (Nov 3):** DDD skeleton with 5 contexts × 4 layers, `shared/{ui,kernel,infrastructure}`,
+`shell`; zoneless; lazy route per context with placeholder pages; `packages/contracts`
+(Firestore doc types + id helpers); `tools/import` placeholder; npm workspaces; Vitest via
+`@angular/build:unit-test`; ESLint (angular-eslint + `eslint-plugin-boundaries` with
+`checkAllOrigins`, so `domain`/`kernel`/`contracts` can't import npm packages); path aliases.
+Build, lint and 15 tests pass. Deviations: context routes live in `ui/<context>.routes.ts`
+(identity exports `identityPublicRoutes` outside the shell and `identityShellRoutes` for
+settings); `src/main.ts` is ignored by the boundaries rule; TS 6 has no `baseUrl`, so aliases
+are `./`-relative `paths`.
 
 ## Step 1 — Test encodes (encode plan, Phase 1a)
 - `tools/import` command `test-encode`: 2–3 sample episodes (dark / fast action / gradients).

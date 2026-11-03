@@ -1,7 +1,7 @@
+/* Angular compiler options: https://angular.dev/reference/configs/angular-compiler-options */
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "outDir": "./dist/out-tsc",
     "strict": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
@@ -9,18 +9,27 @@
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
     "isolatedModules": true,
-    "esModuleInterop": true,
     "experimentalDecorators": true,
-    "moduleResolution": "bundler",
     "importHelpers": true,
     "target": "ES2022",
-    "module": "ES2022",
-    "lib": ["ES2022", "dom"]
+    "module": "preserve",
+    "paths": {
+      "@catalog/*": ["./src/app/contexts/catalog/*"],
+      "@playback/*": ["./src/app/contexts/playback/*"],
+      "@library/*": ["./src/app/contexts/library/*"],
+      "@releases/*": ["./src/app/contexts/releases/*"],
+      "@identity/*": ["./src/app/contexts/identity/*"],
+      "@shared/*": ["./src/app/shared/*"],
+      "@shell/*": ["./src/app/shell/*"],
+      "@ani/contracts": ["./packages/contracts/src/index.ts"]
+    }
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,
     "strictInputAccessModifiers": true,
     "strictTemplates": true
-  }
+  },
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.spec.json" }]
 }

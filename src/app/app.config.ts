@@ -1,19 +1,17 @@
 import {
   ApplicationConfig,
   provideBrowserGlobalErrorListeners,
-  provideZoneChangeDetection,
+  provideZonelessChangeDetection,
 } from '@angular/core';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { provideRouter, withComponentInputBinding, withViewTransitions } from '@angular/router';
 
 import { routes } from './app.routes';
-import { authInterceptor } from './core/interceptors/auth.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes, withComponentInputBinding()),
-    provideHttpClient(withInterceptors([authInterceptor])),
+    // Zoneless is the v22 default; kept explicit so it's obvious zone.js is gone on purpose.
+    provideZonelessChangeDetection(),
+    provideRouter(routes, withComponentInputBinding(), withViewTransitions()),
   ],
 };

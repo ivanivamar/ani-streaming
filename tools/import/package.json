@@ -1,0 +1,10 @@
+{
+  "name": "@ani/import",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Encode + Drive upload + Firestore catalogue importer (PLAN.md Steps 1-2). Empty until Step 1.",
+  "type": "module",
+  "dependencies": {
+    "@ani/contracts": "*"
+  }
+}
