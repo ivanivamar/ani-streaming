@@ -8,8 +8,85 @@ winget install Gyan.FFmpeg
 ```
 
 `ffmpeg`/`ffprobe` are taken from PATH; set `FFMPEG_PATH` (and optionally `FFPROBE_PATH`) to
-use another build. Step 2 adds the full importer (probe → extract → encode/copy → verify →
-resumable Drive upload → Firestore).
+use another build.
+
+```cmd
+npm install
+npm test -w @ani/import
+npm run typecheck -w @ani/import
+```
+
+## Step 2 — `dry-run` / `import`
+
+```cmd
+npm run dry-run -w @ani/import
+npm run import  -w @ani/import
+npm run import  -w @ani/import -- "Attack on Titan" --limit 3
+npm run import  -w @ani/import -- --out tmp\import-test
+```
+
+Paths are files or folders (searched recursively), relative to `C:\Users\ivani\Videos\Anime`;
+no path = that whole folder. **One episode at a time:**
+
+1. **Name** → series, season, episode (rules of `parseVid` in the v3 design):
+   `[Group] Title - S01E05 (…) [CRC].mkv`, `Title.S02E01.1080p.WEB.mkv`, `[Group] Title - 05v2 (1080p).mkv`,
+   `Title S2 - 05`, `Title Episode 5`. No episode number or title → **unparseable**, reported and
+   skipped. No season → season 1 (noted in the report).
+2. **Probe + decide**: display size (SAR, rotation), black bars (cropdetect at 20/40/60/80 %),
+   interlacing (field order, else idet → `bwdif`), Japanese audio track. **Copy** the video when it
+   is H.264 8-bit 4:2:0 or HEVC Main/Main 10 4:2:0, ≤ 1920×1080, square pixels, not interlaced,
+   no black bars and ≤ 8 Mb/s; otherwise **encode** with the Step 1 NVENC settings
+   (`encode+scale` when the frame is resized: above 1080p or non-square pixels).
+   No track tagged Japanese → reported as unsupported (a single untagged track is assumed Japanese).
+3. **Write + verify** `e01.mp4` in `tmp/import-work/<hash>/`: one video, one AAC track, size as
+   planned, duration within 1 s of the source, `moov` before `mdat`.
+4. **Extract**: subtitles (ASS copied, SRT/WebVTT → ASS; PGS/VobSub reported). Sidecars next to
+   the episode win: `<episode>.ass`, `<episode>.en.ass`, `<episode>.en.signs.srt`. One track per
+   language + kind (`full` / `signs` / `songs`, from the track title or `forced`). Fonts from the
+   attachments, chapters (OP/ED by title, else the ~90 s untitled chapter near the start/end),
+   thumbnail WebP at 25 %.
+5. **Upload** to Drive `AniStream/series/<seriesId>/s01/` (+ `fonts/`), resumable. Files already
+   there with the same MD5 are reused, so a re-run uploads nothing twice.
+6. **Firestore**: `series`, `seasons`, `episodes`, `importState` (+ counts), AniList metadata.
+   Then the work copy is removed. Originals are only read.
+
+Re-runs skip sources whose `importState` is `done` (key: file name + size). Drive's 750 GB/day
+limit, the local budget (`--daily-limit`, default 740G, tracked in
+`tmp/import-upload-budget.json`) or **Ctrl+C** stop after/inside the current episode; the next run
+resumes the interrupted upload from the last byte. A second Ctrl+C quits at once (still resumable).
+
+The report is printed and saved as `tmp/import-logs/<command>-<time>.log` + `.json`. Check
+**Needs attention** (unparseable, unsupported, duplicate, failed) and **Series** (AniList match).
+
+| Option | Meaning |
+| --- | --- |
+| `--only <text>` | only series whose title contains the text |
+| `--limit <n>` | first n episodes |
+| `--out <dir>` | local `drive/` + `firestore/` JSON instead of Drive + Firestore (testing) |
+| `--force` | re-import sources already done |
+| `--force-encode` | encode even when the video could be copied |
+| `--replace` | replace an episode that was imported from another file |
+| `--encoder x265` | CPU encode instead of NVENC (slow; PCs without an NVIDIA GPU) |
+| `--keep-work` | keep `tmp/import-work/<hash>` |
+| `--daily-limit 500G` | upload budget per 24 h |
+| `--no-anilist`, `--refresh-meta` | skip AniList / re-match a series that already has an id |
+| `--fast` | dry-run without black-bar/interlace detection |
+
+### Fixing an AniList match
+
+The series summary lists every series with its AniList entry or `NO ANILIST MATCH` and the
+candidates. Create `overrides/<seriesId>` in the Firestore console:
+`{ anilistId: 16498, title: "Attack on Titan", seasons: { s04: { anilistId: 110277 } } }`
+(`title` and `seasons` optional), then `npm run import -w @ani/import -- --only <series> --force --refresh-meta`.
+
+### Credentials (`secrets/`, gitignored)
+
+- `secrets/client_desktop.json` — **Desktop** OAuth client from the `myanime-streaming` Google
+  Cloud project (APIs & Services → Credentials; Drive API enabled; you as a test user on the
+  consent screen). The first `import` opens the browser; the token is cached in `secrets/token.json`.
+- `secrets/service-account.json` — Firebase console → Project settings → Service accounts →
+  *Generate new private key* (or set `GOOGLE_APPLICATION_CREDENTIALS`). `dry-run` uses it when
+  present to show what is already imported.
 
 ## Step 1 — `test-encode`
 

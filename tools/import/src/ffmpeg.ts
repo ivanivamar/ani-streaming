@@ -17,7 +17,7 @@ function siblingProbe(ffmpegPath: string | undefined): string | undefined {
   return fs.existsSync(candidate) ? candidate : undefined;
 }
 
-function capture(bin: string, args: string[]): Promise<string> {
+export function capture(bin: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     const p = spawn(bin, args, { windowsHide: true });
     let out = '';
@@ -64,18 +64,38 @@ export interface ProbeStream {
   bit_rate?: string;
   channels?: number;
   avg_frame_rate?: string;
+  sample_aspect_ratio?: string;
+  display_aspect_ratio?: string;
+  field_order?: string;
+  duration?: string;
+  side_data_list?: Array<{ side_data_type?: string; rotation?: number }>;
   disposition?: Record<string, number>;
+  tags?: Record<string, string>;
+}
+
+export interface ProbeChapter {
+  id: number;
+  start_time: string;
+  end_time: string;
   tags?: Record<string, string>;
 }
 
 export interface ProbeResult {
   streams: ProbeStream[];
-  format: { filename: string; duration?: string; size?: string; bit_rate?: string };
+  chapters?: ProbeChapter[];
+  format: {
+    filename: string;
+    format_name?: string;
+    duration?: string;
+    size?: string;
+    bit_rate?: string;
+    tags?: Record<string, string>;
+  };
 }
 
 export async function probe(file: string): Promise<ProbeResult> {
   const out = await capture(FFPROBE, [
-    '-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', file,
+    '-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', '-show_chapters', file,
   ]);
   return JSON.parse(out) as ProbeResult;
 }
@@ -98,6 +118,8 @@ export interface RunOptions {
   /** Total output duration in seconds, used for the progress line. */
   duration?: number;
   label?: string;
+  /** No progress line (short helper runs such as subtitle extraction). */
+  quiet?: boolean;
 }
 
 /**
@@ -123,7 +145,7 @@ export function runFfmpeg(args: string[], opts: RunOptions = {}): Promise<void> 
         const eq = line.indexOf('=');
         if (eq < 0) continue;
         state[line.slice(0, eq)] = line.slice(eq + 1);
-        if (line.startsWith('progress=')) {
+        if (line.startsWith('progress=') && !opts.quiet) {
           const now = Date.now();
           if (!tty && now - lastPrint < 15000) continue;
           lastPrint = now;

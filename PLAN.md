@@ -1,6 +1,6 @@
 # ani.stream — revival plan (rev. 3, Nov 3, 2026)
 
-**Status: Steps 0 and 1 done (Nov 3, 2026); next is Step 2 (importer).** Replaces the allanime / ani-cli approach (blocked by
+**Status: Steps 0–2 done (Nov 3, 2026); next is Step 3 (identity, Drive access, streaming).** Replaces the allanime / ani-cli approach (blocked by
 purpose-built anti-scraping, see `claude/known-issue-api-sources-cloudflare.md`) with a library
 Ivan owns: his own episodes, compressed with ffmpeg, stored on Google Drive, streamed with range
 requests. Same model as the music app (Material Music).
@@ -260,6 +260,31 @@ Node + TS script in `tools/import`, modelled on the music importer, using `fireb
    `overrides`). Run report printed in the terminal and saved as a local log file.
 6. Stops cleanly on Drive's 750 GB/day limit; resumes next run. `dry-run` and `import`.
 - **Check:** dry-run on the real folder, then import one full season and inspect Drive + Firestore.
+
+**Done (Nov 3):** `npm run dry-run|import -w @ani/import` — see `tools/import/README.md`.
+Checked on Ivan's PC: dry-run of the real folder (both samples matched AniList exactly: Aoashi
+134732, Attack on Titan 16498), Aoashi S01E01 imported to Drive `AniStream/` + Firestore (NVENC
+724 MB → 298 MB in 3:56), re-import with `--force` uploaded 0 bytes (same MD5). Only single
+sample episodes exist so far, so the "one full season" check happens with the first real season.
+Chapters: at most one OP (first half) and one ED (second half), song length 45–150 s, "Opening"/
+"Ending" beat "Intro"/"Credits" (AoT's 2:02 cold open is "Intro"; Aoashi E01 labels its closing
+song "OP" at 22:36, which stays untagged).
+- `importState` id = SHA-1 of file name + size (survives moves and another PC; mtime is stored but
+  not part of the key). A second file for an episode that is already imported is reported as
+  `duplicate` (`--replace` overwrites).
+- `seriesId` = slug of the title parsed from the file name. AniList season 1 needs an **exact**
+  title match (case/spaces/punctuation ignored, English/romaji/native/synonyms); seasons ≥ 2 follow
+  `SEQUEL` relations (TV/ONA). No confident match → series written without AniList data and
+  reported; `overrides/{seriesId} { anilistId, title?, seasons.sNN.anilistId }` fixes it.
+- Fonts on Drive are named `<name>.<md5-8>.<ext>` so two different fonts with one file name
+  never overwrite each other; same content is uploaded once per series.
+- Drive layout: `AniStream/series/<seriesId>/s01/e01.mp4|e01.en.ass|e01.en.signs.ass|e01.thumb.webp`,
+  `AniStream/series/<seriesId>/fonts/*`.
+- Upload sessions are saved in the work folder; Drive's daily limit (403 limit reasons, or repeated
+  `userRateLimitExceeded`), a local 740 GB/24 h budget, or Ctrl+C stop the run and keep the
+  work copy, so the next run resumes the upload at the last byte.
+- `--out <dir>` writes to a local `drive/` + `firestore/` JSON mirror (used to test everything
+  except the Google APIs; tested on synthetic files in the cloud session).
 
 ## Step 3 — Identity, Drive access, streaming
 - `identity`: Google Identity Services sign-in with Drive read-only scope (ported from the music

@@ -1,20 +1,28 @@
 #!/usr/bin/env node
 /**
  * ani.stream importer CLI. Runs on Node ≥ 22.18 directly from TypeScript (type stripping).
- *   npm run test-encode -w @ani/import -- [files...] [options]
+ *   npm run dry-run     -w @ani/import -- [paths…] [options]
+ *   npm run import      -w @ani/import -- [paths…] [options]
+ *   npm run test-encode -w @ani/import -- [files…] [options]
+ *
+ * Only the resolve hook is imported statically: the commands load after it is registered,
+ * so `@ani/contracts` (extensionless imports) resolves.
  */
-import { testEncode } from './test-encode.ts';
+import './resolve-ts.ts';
 
 const commands: Record<string, (argv: string[]) => Promise<void>> = {
-  'test-encode': testEncode,
+  'test-encode': async (argv) => (await import('./test-encode.ts')).testEncode(argv),
+  'dry-run': async (argv) => (await import('./import.ts')).runImport(argv, true),
+  import: async (argv) => (await import('./import.ts')).runImport(argv, false),
 };
 
 const [cmd, ...rest] = process.argv.slice(2);
 const run = cmd ? commands[cmd] : undefined;
 
-if (!run) {
+if (!run || rest.includes('--help')) {
   console.log(`Usage: node tools/import/src/cli.ts <command> [...]\nCommands: ${Object.keys(commands).join(', ')}`);
-  process.exit(cmd ? 1 : 0);
+  if (cmd === 'import' || cmd === 'dry-run') console.log((await import('./import.ts')).IMPORT_HELP);
+  process.exit(run || !cmd ? 0 : 1);
 }
 
 run(rest).catch((e: unknown) => {
