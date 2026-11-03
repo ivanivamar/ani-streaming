@@ -10,11 +10,14 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
+    "build": "ng build && node scripts/build-sw.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test --watch=false",
     "test:watch": "ng test",
-    "lint": "ng lint"
+    "lint": "ng lint",
+    "functions:test": "npm --prefix firebase/functions test",
+    "functions:bundle": "npm --prefix firebase/functions run bundle",
+    "deploy": "firebase deploy"
   },
   "dependencies": {
     "@angular/common": "^22.2.0",

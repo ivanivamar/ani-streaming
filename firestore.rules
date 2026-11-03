@@ -1,0 +1,39 @@
+rules_version = '2';
+
+// ani.stream (PLAN.md "Where data lives").
+// uid comes from /api/firebase/token: "g" + the Google Drive permission id of the account.
+// The importer writes with the Admin SDK, which bypasses these rules.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // config/access { allowedUids: [...] } — the allowlist. Only someone on it can read it,
+    // so the app learns "allowed" or "not allowed" by trying.
+    function allowed() {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/config/access).data.allowedUids;
+    }
+
+    match /config/access {
+      allow read: if signedIn() && request.auth.uid in resource.data.allowedUids;
+    }
+
+    // Catalogue: read-only for allowlisted users, written only by the importer.
+    match /series/{seriesId} {
+      allow read: if allowed();
+      match /{sub=**} {
+        allow read: if allowed();
+      }
+    }
+
+    // Each allowlisted user reads and writes only their own tree.
+    match /users/{uid}/{document=**} {
+      allow read, write: if allowed() && request.auth.uid == uid;
+    }
+
+    // importState, overrides, everything else: importer only.
+  }
+}

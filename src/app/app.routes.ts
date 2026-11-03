@@ -1,16 +1,18 @@
 import { Routes } from '@angular/router';
+import { requireAccess } from '@identity/application';
 import { identityPublicRoutes } from '@identity/ui/identity.routes';
 import { Shell } from '@shell/index';
 
 /**
- * One lazy route group per bounded context. Guards (signed in + allowlisted) arrive with the
- * identity context in Step 3.
+ * One lazy route group per bounded context. Everything inside the shell needs a signed-in,
+ * allowlisted account (`requireAccess` → `/auth?next=…` otherwise).
  */
 export const routes: Routes = [
   ...identityPublicRoutes,
   {
     path: '',
     component: Shell,
+    canActivate: [requireAccess],
     children: [
       { path: 'watch', loadChildren: () => import('@playback/ui/playback.routes') },
       { path: 'library', loadChildren: () => import('@library/ui/library.routes') },

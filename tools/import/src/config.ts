@@ -42,8 +42,12 @@ export const DEFAULTS = {
   /** Drive root folder (same Google account as the music library). */
   driveRoot: 'AniStream',
   audioBitrate: '192k',
-  /** Keyframe interval in frames (~10 s at 23.976). Keeps seeks over Drive range requests short. */
-  gop: 240,
+  /**
+   * Keyframe interval in frames (~2 s at 23.976). A seek must fetch and decode from the keyframe
+   * before the target, so 240 (~10 s) gave 0.4–1.7 s seeks over Drive (Step 3 check). Episodes
+   * imported before Nov 3 keep 240 until re-imported with --force.
+   */
+  gop: 48,
 };
 
 /** Step 1 result (PLAN.md): the encode every importer run uses. */

@@ -23,7 +23,9 @@ config/access                             allowedUids[]
 
 - Catalogue (`series`, `seasons`, `episodes`, `importState`, `overrides`) is written only by
   `tools/import` with the Admin SDK and readable only by uids in `config/access`.
-- `users/{uid}/**` is readable and writable only by that uid.
+- `users/{uid}/**` is readable and writable only by that uid (and only while allowlisted).
+- uid = `g` + the Google Drive permission id, minted by `/api/firebase/token`. Rules:
+  [`firestore.rules`](firestore.rules). Add a uid with `npm run allow -w @ani/import -- <uid>`.
 - Ids: `seriesId` is a title slug (`attack-on-titan`), seasons `s01`, episodes `s01e01`
   (`toSeriesId`, `toSeasonId`, `toEpisodeId` in `@ani/contracts`).
 
@@ -38,8 +40,10 @@ AniStream/series/<seriesId>/s01/e01.en.ass       soft subtitles
 AniStream/series/<seriesId>/s01/e01.thumb.webp
 ```
 
-The app streams `e01.mp4` through its service worker with the signed-in user's Drive
-read-only token (range requests, so seeking is instant).
+The app streams `e01.mp4` through its service worker (`public/sw.js`): `<video src>` points at
+`/__drive/<fileId>?size=<bytes>&type=video/mp4`, and the worker forwards each range request to
+`files/<fileId>?alt=media` with the signed-in user's Drive read-only token, asked from the page per
+request. Seeking is a new range request.
 
 ## AniList
 

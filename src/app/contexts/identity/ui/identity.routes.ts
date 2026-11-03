@@ -4,7 +4,11 @@ const placeholder = () => import('@shared/ui/placeholder-page').then((m) => m.Pl
 
 /** Full-screen routes rendered outside the shell (no sidebar / bottom nav). */
 export const identityPublicRoutes: Routes = [
-  { path: 'auth', loadComponent: placeholder, data: { heading: 'Sign in' }, title: 'Sign in · ani.stream' },
+  {
+    path: 'auth',
+    loadComponent: () => import('./sign-in.page').then((m) => m.SignInPage),
+    title: 'Sign in · ani.stream',
+  },
   { path: 'welcome', loadComponent: placeholder, data: { heading: 'Welcome' }, title: 'Welcome · ani.stream' },
 ];
 

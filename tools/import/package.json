@@ -9,6 +9,7 @@
     "dry-run": "node src/cli.ts dry-run",
     "import": "node src/cli.ts import",
     "test-encode": "node src/cli.ts test-encode",
+    "allow": "node src/cli.ts allow",
     "test": "node --import ./src/resolve-ts.ts --test \"src/**/*.test.ts\"",
     "typecheck": "tsc -p tsconfig.json"
   },

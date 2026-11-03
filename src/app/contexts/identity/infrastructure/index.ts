@@ -1,7 +1,8 @@
 /**
- * identity / infrastructure — Firebase Auth, Google Identity Services, sign-in helper function client.
+ * identity / infrastructure — Google Identity Services, sign-in helper client, Firebase custom-token
+ * sign-in, `config/access` check.
  *
- * Implements the ports declared in domain/ and application/; wired through this context's
- * providers. Never imported by ui/.
+ * Implements the ports declared in domain/ and application/; wired through `provideIdentity()`
+ * in app.config.ts. Never imported by ui/.
  */
-export {};
+export { provideIdentity } from './identity.providers';

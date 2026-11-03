@@ -1,7 +1,8 @@
 /**
- * catalog / infrastructure — Firestore repositories for series/seasons/episodes, doc <-> entity mappers.
+ * catalog / infrastructure — Firestore repository for series/seasons/episodes, doc <-> entity mappers.
  *
- * Implements the ports declared in domain/ and application/; wired through this context's
- * providers. Never imported by ui/.
+ * Implements the ports declared in domain/; wired through `provideCatalog()` in app.config.ts.
+ * Never imported by ui/.
  */
-export {};
+export { provideCatalog } from './catalog.providers';
+export { fromFirestore } from './mappers';

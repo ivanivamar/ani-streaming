@@ -94,7 +94,7 @@ module.exports = defineConfig([
             },
             {
               from: { element: { type: 'domain' } },
-              allow: [sameContext('domain'), { element: { types: ['shared-kernel'] } }].map((to) => ({ to })),
+              allow: [sameContext('domain'), { element: { types: ['shared-kernel', 'contracts'] } }].map((to) => ({ to })),
             },
             {
               from: { element: { type: 'application' } },
@@ -145,13 +145,14 @@ module.exports = defineConfig([
               from: { element: { type: 'contracts' } },
               allow: { to: { element: { type: 'contracts' } } },
             },
-            // Composition root: app config/routes may wire any context's ui routes and providers.
+            // Composition root: app config/routes may wire any context's ui routes, providers and
+    // application guards.
             {
               from: { element: { type: 'app' } },
               allow: {
                 to: {
                   element: {
-                    types: ['app', 'shell', 'ui', 'infrastructure', 'shared-ui', 'shared-infrastructure', 'shared-kernel'],
+                    types: ['app', 'shell', 'ui', 'application', 'infrastructure', 'shared-ui', 'shared-infrastructure', 'shared-kernel'],
                   },
                 },
               },

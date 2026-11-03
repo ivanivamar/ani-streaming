@@ -1,9 +1,11 @@
 import { Routes } from '@angular/router';
 
-const placeholder = () => import('@shared/ui/placeholder-page').then((m) => m.PlaceholderPage);
-
 export const playbackRoutes: Routes = [
-  { path: ':seriesId/:episodeId', loadComponent: placeholder, data: { heading: 'Watch' }, title: 'ani.stream' },
+  {
+    path: ':seriesId/:episodeId',
+    loadComponent: () => import('./watch.page').then((m) => m.WatchPage),
+    title: 'Watch · ani.stream',
+  },
 ];
 
 export default playbackRoutes;

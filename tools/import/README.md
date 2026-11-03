@@ -108,8 +108,8 @@ Without file arguments it uses the Step 1 samples in `C:\Users\ivani\Videos\Anim
 | `copy` | video stream copied, only when the source is H.264 8-bit or HEVC ≤10-bit, 4:2:0 |
 
 All variants: Japanese audio track only → AAC stereo 192k (copied when it is already AAC
-stereo), `-tag:v hvc1`, `-movflags +faststart`, keyframe every 240 frames (~10 s, for quick
-seeks over Drive), subtitles and font attachments dropped (they become sidecar files in Step 2).
+stereo), `-tag:v hvc1`, `-movflags +faststart`, keyframe every 48 frames (~2 s, for quick
+seeks over Drive; was 240 before Nov 3), subtitles and font attachments dropped (they become sidecar files in Step 2).
 `-b:v 0` makes NVENC purely quality-driven; without it ffmpeg's NVENC wrapper aims at 2 Mb/s.
 
 Options

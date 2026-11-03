@@ -4,6 +4,7 @@
  *   npm run dry-run     -w @ani/import -- [paths…] [options]
  *   npm run import      -w @ani/import -- [paths…] [options]
  *   npm run test-encode -w @ani/import -- [files…] [options]
+ *   npm run allow       -w @ani/import -- <uid…> [--remove]   (app allowlist, config/access)
  *
  * Only the resolve hook is imported statically: the commands load after it is registered,
  * so `@ani/contracts` (extensionless imports) resolves.
@@ -14,6 +15,7 @@ const commands: Record<string, (argv: string[]) => Promise<void>> = {
   'test-encode': async (argv) => (await import('./test-encode.ts')).testEncode(argv),
   'dry-run': async (argv) => (await import('./import.ts')).runImport(argv, true),
   import: async (argv) => (await import('./import.ts')).runImport(argv, false),
+  allow: async (argv) => (await import('./allow.ts')).allow(argv),
 };
 
 const [cmd, ...rest] = process.argv.slice(2);

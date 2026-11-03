@@ -1,7 +1,8 @@
 /**
- * playback / infrastructure — DriveStreamAdapter, JassubRenderer, service-worker bridge.
+ * playback / infrastructure — service-worker bridge for Drive streaming (public/sw.js);
+ * JassubRenderer arrives in Step 5.
  *
- * Implements the ports declared in domain/ and application/; wired through this context's
- * providers. Never imported by ui/.
+ * Implements the ports declared in domain/; wired through `providePlayback()` in app.config.ts.
+ * Never imported by ui/.
  */
-export {};
+export { providePlayback } from './playback.providers';

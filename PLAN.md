@@ -1,6 +1,6 @@
 # ani.stream — revival plan (rev. 3, Nov 3, 2026)
 
-**Status: Steps 0–2 done (Nov 3, 2026); next is Step 3 (identity, Drive access, streaming).** Replaces the allanime / ani-cli approach (blocked by
+**Status: Steps 0–3 done (Nov 3, 2026); next is Step 4 (UI to design v3), with 5/6 in parallel.** Replaces the allanime / ani-cli approach (blocked by
 purpose-built anti-scraping, see `claude/known-issue-api-sources-cloudflare.md`) with a library
 Ivan owns: his own episodes, compressed with ffmpeg, stored on Google Drive, streamed with range
 requests. Same model as the music app (Material Music).
@@ -227,7 +227,7 @@ PC or phone, so the choice is driven by size, speed and streaming:
 ```
 -c:v hevc_nvenc -preset p7 -tune hq -rc vbr -cq 26 -b:v 0 -maxrate 8M -bufsize 16M
 -b_ref_mode middle -spatial-aq 1 -temporal-aq 1 -rc-lookahead 32
--pix_fmt p010le -profile:v main10 -g 240 -tag:v hvc1
+-pix_fmt p010le -profile:v main10 -g 48 -tag:v hvc1
 -c:a aac -b:a 192k -ac 2          (Japanese track only; stream copy if already AAC ≤ 2 ch)
 -movflags +faststart
 ```
@@ -235,7 +235,9 @@ PC or phone, so the choice is driven by size, speed and streaming:
   ~2–5 Mb/s → roughly 400–900 MB per 24-min episode.
 - **Ceiling 8 Mb/s** (`-maxrate 8M -bufsize 16M`): CQ 26 averages well under it, so it only
   trims rare spikes (the AoT OP); keeps phone streaming on mobile data and Drive seeks predictable.
-- **GOP 240** (~10 s keyframes) for quick seeks over Drive range requests.
+- **GOP 48** (~2 s keyframes) for quick seeks over Drive range requests. Was 240 (~10 s) until
+  Nov 3: Step 3 measured 400–1722 ms seeks on real Drive (decoding up to 10 s from the previous
+  keyframe). Applies to new imports only; existing episodes keep 240 unless re-imported with `--force`.
 - Note: current ffmpeg builds only accept `-spatial-aq` / `-temporal-aq` (hyphen), not underscores.
 
 **Copy rule for Step 2** (instead of re-encoding): copy the video only if it is H.264 8-bit
@@ -300,6 +302,39 @@ song "OP" at 22:36, which stays untagged).
   used (it can't proxy range requests); this custom worker also caches the app shell.
 - `catalog/infrastructure`: Firestore repositories for series/seasons/episodes.
 - **Check:** a Drive video plays and seeks instantly; catalogue loads from Firestore.
+
+**Done (Nov 3)** — deployed to myanime-streaming; sign-in, catalogue and Drive playback checked on the PC. Setup steps in README "Step 3 setup".
+- `firebase/functions` (`api`, europe-west1): `/api/auth/{exchange,refresh,logout,status}` (refresh
+  token in an HttpOnly `__session` cookie) and `/api/firebase/token` (Drive token → Firebase custom
+  token, uid = `g` + Drive permission id). Only these two handlers of the music app were ported.
+  Header `X-Ani: 1`. 5 handler tests (`npm run functions:test`).
+- `firebase.json` (Hosting `dist/ani-stream/browser`, `/api/**` → function, SPA rewrite, cache
+  headers), `.firebaserc` (myanime-streaming), `firestore.rules` (catalogue readable only by uids in
+  `config/access`; `config/access` readable only by listed uids; `users/{uid}/**` owner + allowlisted),
+  `firestore.indexes.json` (empty).
+- `identity`: domain (session status, token rules, allowlist), application (`SessionStore` with
+  signals, ports, `requireAccess` guard on the shell route), infrastructure (GIS popup, helper
+  client, Drive `about` profile, localStorage, custom-token Firebase sign-in, `config/access` check),
+  ui (functional sign-in page: sign in, expired, no-access with the uid to allow, errors).
+  Scope **drive.readonly**. Without the helper (plain `ng serve` without the proxy) it falls back
+  to the hourly token model, as in the music app.
+- `shared/infrastructure`: `APP_ENV` (filled in `src/app/app.env.ts`), Firebase providers
+  (Auth with IndexedDB persistence, Firestore with persistent multi-tab cache), `AccessTokenSource`,
+  `DriveClient`.
+- `playback`: `public/sw.js` (Drive range proxy at `/__drive/<fileId>?size=&type=` + app-shell
+  cache), `scripts/build-sw.mjs` fills its BUILD/PRECACHE/ASSETS after `ng build`, `DriveStreamBridge`
+  (registers the worker at boot, answers token requests with a renewed token), `PlaybackStore`,
+  a plain `<video>` watch page with a seek timer. Real player is Step 5.
+- `catalog`: Firestore repository + Timestamp mappers, `CatalogStore`, functional Home (series grid)
+  and Anime detail (episodes per season). Designed screens are Step 4.
+- `tools/import`: `npm run allow -w @ani/import -- <uid>` edits `config/access`.
+- `npm start` proxies `/api` to the deployed Hosting site (`proxy.conf.json`), so localhost uses
+  the real sign-in function.
+- Initial bundle budget raised to 1 MB warning / 1.5 MB error: the Firebase SDK is in the main
+  bundle (~906 kB raw, ~236 kB transferred).
+- Tested in the cloud: 38 app tests, lint (boundaries) clean, prod build; the worker was run in
+  Chromium against a fake Drive (metadata 112 ms, seeks 9–84 ms, 416 past the end, 401 → page told)
+  and the shell cache was checked offline.
 
 ## Step 4 — Rebuild the UI to design v3 (adapted)
 `shared/ui` design system (tokens, pill, segmented, dropdown, context menu, poster card), then
