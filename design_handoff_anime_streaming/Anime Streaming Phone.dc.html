@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#0a0b0d;font-family:Sora,sans-serif;color:#ececee}a{color:oklch(0.82 0.14 155)}a:hover{color:#ececee}</style>
+</helmet>
+<section id="1" style="padding:64px;display:flex;flex-direction:column;gap:40px">
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:720px">
+    <div style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#8b8b93">Anime Streaming v3 · Phone</div>
+    <div style="font-size:34px;font-weight:600;letter-spacing:-0.02em">ani<span style="color:oklch(0.82 0.14 155)">.</span><span style="font-weight:300;color:#8b8b93">stream</span> on 390 × 844</div>
+    <div style="font-size:15px;line-height:1.6;color:#a4a4ab;text-wrap:pretty">Every screen is the live v3 app in its mobile layout. Each phone is fully interactive: tap through, navigate with the bottom bar, open the player. Downloads and Settings live in the Profile menu; Import is desktop-only.</div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:56px 44px">
+    <sc-for list="{{ screens }}" as="s" hint-placeholder-count="11">
+      <div id="{{ s.id }}" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:12px;font-weight:600;padding:4px 9px;border-radius:999px;background:#16211b;color:oklch(0.86 0.13 155)">{{ s.id }}</span>
+          <span style="font-size:16px;font-weight:500">{{ s.name }}</span>
+        </div>
+        <div style="width:390px;height:844px;padding:10px;border-radius:56px;background:#1a1b1f;box-shadow:0 0 0 1px rgba(255,255,255,0.08),0 40px 80px rgba(0,0,0,0.5)">
+          <div style="position:relative;width:390px;height:844px;border-radius:46px;overflow:hidden;background:#0a0b0d">
+            <div style="height:50px;display:flex;align-items:center;justify-content:space-between;padding:0 30px 0 36px;font-size:15px;font-weight:600;color:#ececee"><span>9:41</span><span style="display:flex;gap:6px;align-items:center"><span style="width:17px;height:10px;border-radius:2px;background:linear-gradient(90deg,#ececee 0 20%,transparent 20% 27%,#ececee 27% 47%,transparent 47% 54%,#ececee 54% 74%,transparent 74% 81%,#ececee 81%)"></span><span style="width:24px;height:11px;border-radius:3px;border:1px solid rgba(236,236,238,0.5);padding:1px;box-sizing:border-box"><span style="display:block;width:75%;height:100%;border-radius:1px;background:#ececee"></span></span></span></div>
+            <iframe src="{{ s.src }}" title="{{ s.name }}" loading="lazy" style="width:390px;height:794px;border:0;display:block"></iframe>
+            <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#000;pointer-events:none"></div>
+            <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:rgba(255,255,255,0.5);pointer-events:none"></div>
+          </div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-top:24px">
+    <div style="font-size:22px;font-weight:600;letter-spacing:-0.01em">Landscape · full-screen player</div>
+    <div style="font-size:14px;line-height:1.6;color:#a4a4ab;max-width:640px;text-wrap:pretty">844 × 390. Status bar hidden, controls inset past the camera cutout, episodes list opens as a full-height side sheet.</div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:56px 44px">
+    <sc-for list="{{ landscape }}" as="s" hint-placeholder-count="2">
+      <div id="{{ s.id }}" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:12px;font-weight:600;padding:4px 9px;border-radius:999px;background:#16211b;color:oklch(0.86 0.13 155)">{{ s.id }}</span>
+          <span style="font-size:16px;font-weight:500">{{ s.name }}</span>
+        </div>
+        <div style="width:844px;height:390px;padding:10px;border-radius:56px;background:#1a1b1f;box-shadow:0 0 0 1px rgba(255,255,255,0.08),0 40px 80px rgba(0,0,0,0.5)">
+          <div style="position:relative;width:844px;height:390px;border-radius:46px;overflow:hidden;background:#000">
+            <iframe src="{{ s.src }}" title="{{ s.name }}" loading="lazy" style="width:844px;height:390px;border:0;display:block"></iframe>
+            <div style="position:absolute;left:11px;top:50%;transform:translateY(-50%);width:34px;height:120px;border-radius:20px;background:#000;pointer-events:none"></div>
+            <div style="position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:rgba(255,255,255,0.5);pointer-events:none"></div>
+          </div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const L = [['signin','Sign-in'],['welcome','Welcome'],['home','Home'],['search','Search'],['library','Library'],['releases','New Releases'],['anime','Anime Detail'],['player','Episode Watch'],['download','Download'],['settings','Settings']];
+    const src = './Anime%20Streaming%20v3.dc.html?screen=player';
+    const landscape = [{ id:'1l', name:'Playing', src }, { id:'1m', name:'Episodes sheet', src: src + '&drawer=1' }];
+    return { landscape, screens: L.map(([k, name], i) => ({ id: '1' + String.fromCharCode(97 + i), name, src: './Anime%20Streaming%20v3.dc.html?screen=' + k })) };
+  }
+}
+</script>
+</body>
+</html>

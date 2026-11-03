@@ -159,11 +159,11 @@ button{cursor:pointer}
       <sc-if value="{{ searchOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeSearch }}" style="position:fixed;inset:0;z-index:41"></div></sc-if>
       <div style="position:relative;z-index:42;width:100%;max-width:620px">
         <div style="display:flex;align-items:center;gap:12px;height:48px;padding:0 8px 0 18px;border-radius:999px;background:{{ sBg }};border:1px solid {{ sBorder }};box-shadow:{{ sShadow }};transition:background .15s,border-color .15s,box-shadow .15s">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{ sIcon }}" stroke-width="1.8" stroke-linecap="round" style="flex:none"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 20 20"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{ sIcon }}" stroke-width="1.8" stroke-linecap="round" style="flex:none" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 20 20"></path></svg>
           <input ref="{{ searchRef }}" value="{{ query }}" onChange="{{ onQuery }}" onFocus="{{ onSearchFocus }}" onKeyDown="{{ onSearchKey }}" placeholder="Search anime" style="flex:1;min-width:0;height:100%;background:none;border:none;outline:none;color:#ececee;font-size:15px"></input>
           <sc-if value="{{ hasQuery }}" hint-placeholder-val="{{ false }}">
             <button onClick="{{ clearQuery }}" title="Clear" style="width:32px;height:32px;flex:none;display:flex;align-items:center;justify-content:center;border:none;border-radius:50%;background:rgba(255,255,255,0.08);color:#b5b5bc" style-hover="background:rgba(255,255,255,0.16);color:#fff">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"></path></svg>
             </button>
           </sc-if>
           <sc-if value="{{ noQuery }}" hint-placeholder-val="{{ true }}">
@@ -177,10 +177,10 @@ button{cursor:pointer}
               <div style="padding:8px 12px 6px;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:#61616a">Recent searches</div>
               <sc-for list="{{ recentDrop }}" as="r" hint-placeholder-count="4">
                 <button onClick="{{ r.open }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:10px 12px;border:none;border-radius:10px;background:transparent;color:#d8d8dc;font-size:14px;text-align:left" style-hover="background:rgba(255,255,255,0.06)">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6c6c74" stroke-width="1.8" stroke-linecap="round" style="flex:none"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l2.5 2"></path></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6c6c74" stroke-width="1.8" stroke-linecap="round" style="flex:none" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l2.5 2"></path></svg>
                   <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.term }}</span>
                   <span role="button" onClick="{{ r.remove }}" title="Remove" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:50%;color:#6c6c74;cursor:pointer" style-hover="background:rgba(255,255,255,0.08);color:#fff">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"></path></svg>
                   </span>
                 </button>
               </sc-for>
@@ -200,7 +200,7 @@ button{cursor:pointer}
               </sc-if>
               <div style="height:1px;background:rgba(255,255,255,0.08);margin:6px 4px"></div>
               <button onClick="{{ submitSearch }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:10px 12px;border:none;border-radius:10px;background:transparent;color:oklch(0.86 0.13 155);font-size:13.5px;font-weight:500;text-align:left" style-hover="background:rgba(255,255,255,0.06)">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="flex:none"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 20 20"></path></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="flex:none" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 20 20"></path></svg>
                 <span style="flex:1">See all results for “{{ query }}”</span>
                 <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7a7a82;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:2px 7px">Enter</span>
               </button>
@@ -348,7 +348,7 @@ button{cursor:pointer}
                 <div style="position:absolute;inset:0;background:radial-gradient(120% 70% at 20% 0%,rgba(255,255,255,0.16),transparent 55%),linear-gradient(180deg,transparent 55%,rgba(0,0,0,0.55))"></div>
                 <div style="position:absolute;left:10px;bottom:10px;padding:4px 9px;border-radius:999px;background:#121316;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.85)">{{ a.epsLabel }}</div>
                 <span role="button" onClick="{{ a.toggleFav }}" title="Favourite" style="position:absolute;top:8px;right:8px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:{{ a.favBg }};cursor:pointer" style-hover="background:#24252a">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="{{ a.favIconFill }}" stroke="{{ a.favIconStroke }}" stroke-width="2" stroke-linejoin="round"><path d="M12 20.5 3.8 12.3a5 5 0 0 1 7.1-7.1l1.1 1.1 1.1-1.1a5 5 0 1 1 7.1 7.1Z"></path></svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="{{ a.favIconFill }}" stroke="{{ a.favIconStroke }}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 20.5 3.8 12.3a5 5 0 0 1 7.1-7.1l1.1 1.1 1.1-1.1a5 5 0 1 1 7.1 7.1Z"></path></svg>
                 </span>
                 <sc-if value="{{ a.hasProg }}" hint-placeholder-val="{{ false }}">
                   <div style="position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(0,0,0,0.45)">
@@ -388,8 +388,8 @@ hint: ani-cli -U to update the scraper</div>
 
     <sc-if value="{{ isAnime }}" hint-placeholder-val="{{ false }}">
       <div data-page="1">
-        <button onClick="{{ goBackList }}" style="display:flex;align-items:center;gap:8px;background:none;border:none;padding:0;margin-bottom:26px;color:#8b8b93;font-size:13px" style-hover="color:#ececee">
-          <span style="font-family:'JetBrains Mono',monospace">←</span> Back
+        <button onClick="{{ goBackList }}" style="display:flex;align-items:center;gap:6px;height:36px;padding:0 14px 0 9px;margin-bottom:26px;border-radius:999px;border:1px solid rgba(255,255,255,0.1);background:#16171b;color:#c9c9cf;font-size:13px;font-weight:500;transition:background .15s,color .15s,transform .15s" style-hover="background:#202126;color:#ececee" style-active="transform:scale(0.96)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M15 5l-7 7 7 7"></path></svg>Back
         </button>
 
         <div style="display:flex;flex-wrap:wrap;gap:clamp(20px,3vw,36px);margin-bottom:48px">
@@ -462,23 +462,23 @@ hint: ani-cli -U to update the scraper</div>
         </div>
 
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-bottom:28px">
-          <div data-stag="1" style="display:flex;flex-wrap:wrap;gap:8px;flex:1;min-width:0">
+          <div data-stag="1" style="display:flex;flex-wrap:nowrap;gap:8px;flex:1 1 auto;min-width:0;max-width:100%;overflow-x:auto;scrollbar-width:none;padding:2px 0">
             <sc-for list="{{ libTabs }}" as="t" hint-placeholder-count="5">
               <button onClick="{{ t.select }}" style="display:flex;align-items:center;gap:8px;padding:8px 15px;border-radius:999px;border:1px solid {{ t.border }};background:{{ t.bg }};color:{{ t.fg }};font-size:13px;font-weight:500;white-space:nowrap" style-hover="border-color:rgba(255,255,255,0.28)">{{ t.name }}<span style="font-family:'JetBrains Mono',monospace;font-size:11px;opacity:0.7">{{ t.count }}</span></button>
             </sc-for>
           </div>
-          <div style="display:flex;align-items:center;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex:none">
             <button onClick="{{ libSortDd.open }}" style="display:flex;align-items:center;gap:8px;height:36px;padding:0 11px 0 12px;border-radius:9px;border:1px solid {{ libSortDd.border }};background:#1a1b1f;color:{{ libSortDd.labelFg }};font-size:13px;font-weight:500;text-align:left;height:38px;min-width:190px;" style-hover="background:#202126">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b8b93" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M7 4v16M3.5 16.5 7 20l3.5-3.5M14 6h7M14 12h5M14 18h3"></path></svg><sc-if value="{{ libSortDd.hasDot }}" hint-placeholder-val="{{ false }}"><span style="width:7px;height:7px;flex:none;border-radius:50%;background:{{ libSortDd.dot }}"></span></sc-if>
                 <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ libSortDd.label }}</span>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b8b93" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;transition:transform .15s;transform:{{ libSortDd.chev }}"><path d="M6 9l6 6 6-6"></path></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b8b93" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;transition:transform .15s;transform:{{ libSortDd.chev }}"><path d="M6 9l6 6 6-6"></path></svg>
               </button>
             <div style="display:flex;padding:3px;border-radius:11px;background:#1a1b1f;border:1px solid rgba(255,255,255,0.09)">
               <button onClick="{{ setGridView }}" title="Grid" style="width:34px;height:30px;display:flex;align-items:center;justify-content:center;border:none;border-radius:8px;background:{{ gridBtnBg }};color:{{ gridBtnFg }}">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"></rect></svg>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"></rect></svg>
               </button>
               <button onClick="{{ setListView }}" title="List" style="width:34px;height:30px;display:flex;align-items:center;justify-content:center;border:none;border-radius:8px;background:{{ listBtnBg }};color:{{ listBtnFg }}">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"></path><circle cx="4.5" cy="6" r="1" fill="currentColor"></circle><circle cx="4.5" cy="12" r="1" fill="currentColor"></circle><circle cx="4.5" cy="18" r="1" fill="currentColor"></circle></svg>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"></path><circle cx="4.5" cy="6" r="1" fill="currentColor"></circle><circle cx="4.5" cy="12" r="1" fill="currentColor"></circle><circle cx="4.5" cy="18" r="1" fill="currentColor"></circle></svg>
               </button>
             </div>
           </div>
@@ -551,7 +551,7 @@ hint: ani-cli -U to update the scraper</div>
             <div style="width:34px;height:34px;flex:none;border-radius:50%;background:oklch(0.84 0.14 155);color:#08110c;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></div>
             <div style="flex:1;min-width:180px;font-size:14px;font-weight:500">{{ importDoneLabel }}</div>
             <button onClick="{{ goLibrary }}" style="padding:9px 16px;border:none;border-radius:9px;background:oklch(0.84 0.14 155);color:#08110c;font-size:13.5px;font-weight:600" style-hover="background:oklch(0.9 0.13 155)">View library</button>
-            <button onClick="{{ dismissDone }}" title="Dismiss" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;border-radius:8px;background:transparent;color:#8b8b93" style-hover="background:#1f2a24;color:#fff"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+            <button onClick="{{ dismissDone }}" title="Dismiss" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;border-radius:8px;background:transparent;color:#8b8b93" style-hover="background:#1f2a24;color:#fff"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
           </div>
         </sc-if>
 
@@ -609,7 +609,7 @@ hint: ani-cli -U to update the scraper</div>
                       <sc-if value="{{ r.isReview }}" hint-placeholder-val="{{ false }}">
                         <button onClick="{{ r.candDd.open }}" style="display:flex;align-items:center;gap:8px;height:36px;padding:0 11px 0 12px;border-radius:9px;border:1px solid {{ r.candDd.border }};background:#1a1b1f;color:{{ r.candDd.labelFg }};font-size:13px;font-weight:500;text-align:left;flex:1;min-width:0" style-hover="background:#202126">
                           <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.candDd.label }}</span>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b8b93" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;transition:transform .15s;transform:{{ r.candDd.chev }}"><path d="M6 9l6 6 6-6"></path></svg>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b8b93" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;transition:transform .15s;transform:{{ r.candDd.chev }}"><path d="M6 9l6 6 6-6"></path></svg>
                         </button>
                       </sc-if>
                       <sc-if value="{{ r.isNone }}" hint-placeholder-val="{{ false }}">
@@ -619,7 +619,7 @@ hint: ani-cli -U to update the scraper</div>
                         </sc-if>
                       </sc-if>
                     </div>
-                    <button onClick="{{ r.toggleOpen }}" style="flex:none;display:flex;align-items:center;gap:7px;height:34px;padding:0 10px 0 12px;border:1px solid rgba(255,255,255,0.1);border-radius:9px;background:transparent;color:#a5a5ad;font-size:12.5px" style-hover="border-color:rgba(255,255,255,0.24);color:#fff">{{ r.filesLabel }}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .15s;transform:{{ r.openChev }}"><path d="M6 9l6 6 6-6"></path></svg></button>
+                    <button onClick="{{ r.toggleOpen }}" style="flex:none;display:flex;align-items:center;gap:7px;height:34px;padding:0 10px 0 12px;border:1px solid rgba(255,255,255,0.1);border-radius:9px;background:transparent;color:#a5a5ad;font-size:12.5px" style-hover="border-color:rgba(255,255,255,0.24);color:#fff">{{ r.filesLabel }}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .15s;transform:{{ r.openChev }}"><path d="M6 9l6 6 6-6"></path></svg></button>
                   </div>
 
                   <sc-if value="{{ r.hasChips }}" hint-placeholder-val="{{ true }}">
@@ -647,7 +647,7 @@ hint: ani-cli -U to update the scraper</div>
                           <span style="width:38px;flex:none;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:600;color:{{ f.epFg }}">{{ f.epLabel }}</span>
                           <span style="flex:1;min-width:0;font-family:'JetBrains Mono',monospace;font-size:12px;color:#a5a5ad;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.name }}</span>
                           <span style="flex:none;font-family:'JetBrains Mono',monospace;font-size:11px;color:#61616a">{{ f.size }}</span>
-                          <button onClick="{{ f.remove }}" title="Remove file" style="width:28px;height:28px;flex:none;display:flex;align-items:center;justify-content:center;border:none;border-radius:7px;background:transparent;color:#7a7a82" style-hover="background:#24252a;color:#fff"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+                          <button onClick="{{ f.remove }}" title="Remove file" style="width:28px;height:28px;flex:none;display:flex;align-items:center;justify-content:center;border:none;border-radius:7px;background:transparent;color:#7a7a82" style-hover="background:#24252a;color:#fff"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
                         </div>
                       </sc-for>
                     </div>
@@ -809,7 +809,7 @@ hint: ani-cli -U to update the scraper</div>
                       <sc-if value="{{ r.isDd }}" hint-placeholder-val="{{ false }}">
                         <button onClick="{{ r.dd.open }}" style="flex:none;width:180px;display:flex;align-items:center;gap:8px;height:38px;padding:0 11px 0 12px;border-radius:9px;border:1px solid {{ r.dd.border }};background:#1a1b1f;color:{{ r.dd.labelFg }};font-size:13px;font-weight:500;text-align:left" style-hover="background:#202126">
                           <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.dd.label }}</span>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b8b93" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;transition:transform .15s;transform:{{ r.dd.chev }}"><path d="M6 9l6 6 6-6"></path></svg>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b8b93" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;transition:transform .15s;transform:{{ r.dd.chev }}"><path d="M6 9l6 6 6-6"></path></svg>
                         </button>
                       </sc-if>
                       <sc-if value="{{ r.isText }}" hint-placeholder-val="{{ false }}">
@@ -851,7 +851,7 @@ hint: ani-cli -U to update the scraper</div>
                 <div style="font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ dlPickTitle }}</div>
                 <div style="font-size:12px;color:#7a7a82;margin-top:2px">{{ dlPickSub }}</div>
               </div>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b8b93" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;transition:transform .15s;transform:{{ dlPickDd.chev }}"><path d="M6 9l6 6 6-6"></path></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b8b93" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;transition:transform .15s;transform:{{ dlPickDd.chev }}"><path d="M6 9l6 6 6-6"></path></svg>
             </button>
             <div data-stag="1" style="display:flex;gap:4px;padding:4px;border-radius:12px;background:#1a1b1f;border:1px solid rgba(255,255,255,0.08)">
               <sc-for list="{{ dlAudioOpts }}" as="o" hint-placeholder-count="2">
@@ -860,7 +860,7 @@ hint: ani-cli -U to update the scraper</div>
             </div>
             <button onClick="{{ dlQDd.open }}" style="display:flex;align-items:center;gap:8px;height:40px;padding:0 11px 0 12px;border-radius:10px;border:1px solid {{ dlQDd.border }};background:#1a1b1f;color:{{ dlQDd.labelFg }};font-size:13.5px;font-weight:500;text-align:left;height:56px;border-radius:12px;width:150px;flex:none" style-hover="background:#202126">
                 <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ dlQDd.label }}</span>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b8b93" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;transition:transform .15s;transform:{{ dlQDd.chev }}"><path d="M6 9l6 6 6-6"></path></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b8b93" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;transition:transform .15s;transform:{{ dlQDd.chev }}"><path d="M6 9l6 6 6-6"></path></svg>
               </button>
           </div>
 
@@ -911,7 +911,7 @@ hint: ani-cli -U to update the scraper</div>
                       <sc-if value="{{ j.paused }}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 20 20"><path d="M5 3l12 7-12 7z" fill="currentColor"></path></svg></sc-if>
                       <sc-if value="{{ j.running }}" hint-placeholder-val="{{ true }}"><svg width="14" height="14" viewBox="0 0 20 20"><rect x="4" y="3" width="4" height="14" rx="1" fill="currentColor"></rect><rect x="12" y="3" width="4" height="14" rx="1" fill="currentColor"></rect></svg></sc-if>
                     </button>
-                    <button onClick="{{ j.cancel }}" title="Cancel" style="width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;border:none;border-radius:10px;background:transparent;color:#8b8b93" style-hover="background:#24252a;color:#fff"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+                    <button onClick="{{ j.cancel }}" title="Cancel" style="width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;border:none;border-radius:10px;background:transparent;color:#8b8b93" style-hover="background:#24252a;color:#fff"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
                   </div>
                   <div data-stag="1" style="display:flex;flex-wrap:wrap;gap:4px">
                     <sc-for list="{{ j.chips }}" as="c" hint-placeholder-count="4">
@@ -958,8 +958,8 @@ hint: ani-cli -U to update the scraper</div>
   </div>
 
   <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
-  <nav style="position:fixed;left:0;right:0;bottom:0;z-index:50;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:2px;padding:6px 6px calc(6px + env(safe-area-inset-bottom));background:#0e0f12;border-top:1px solid rgba(255,255,255,0.08)">
-    <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4">
+  <nav style="position:fixed;left:0;right:0;bottom:0;z-index:50;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;padding:6px 6px calc(6px + env(safe-area-inset-bottom));background:#0e0f12;border-top:1px solid rgba(255,255,255,0.08)">
+    <sc-for list="{{ mobileNav }}" as="n" hint-placeholder-count="3">
       <button onClick="{{ n.go }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:54px;border:none;border-radius:10px;background:transparent;color:{{ n.fg }};font-size:10.5px;font-weight:500">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{ n.iconColor }}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.icon }}"></path></svg>{{ n.label }}
       </button>
@@ -982,8 +982,13 @@ hint: ani-cli -U to update the scraper</div>
       </div>
       <div style="height:1px;background:rgba(255,255,255,0.08);margin:14px -16px 8px"></div>
       <div style="display:flex;flex-direction:column;gap:2px">
+        <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ goDownload }}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border:none;border-radius:9px;background:transparent;color:#d8d8dc;font-size:13.5px;text-align:left" style-hover="background:rgba(255,255,255,0.07)">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9a9aa2" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 20h14"></path></svg><span style="flex:1">Downloads</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7d7d85">{{ dlActiveCount }}</span>
+          </button>
+        </sc-if>
         <button onClick="{{ goSettings }}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border:none;border-radius:9px;background:transparent;color:#d8d8dc;font-size:13.5px;text-align:left" style-hover="background:rgba(255,255,255,0.07)">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9a9aa2" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>Settings
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9a9aa2" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>Settings
         </button>
         <button onClick="{{ logout }}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border:none;border-radius:9px;background:transparent;color:#d8d8dc;font-size:13.5px;text-align:left" style-hover="background:rgba(255,90,90,0.1);color:#ff9d9d">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"></path></svg>Log out
@@ -1033,59 +1038,79 @@ hint: ani-cli -U to update the scraper</div>
     <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.1em;color:rgba(255,255,255,0.22)">VIDEO STREAM</div>
     <button onClick="{{ togglePlay }}" style="position:absolute;inset:0;background:transparent;border:none"></button>
 
-    <div style="position:absolute;left:0;right:0;bottom:132px;display:flex;justify-content:center;padding:0 8vw;pointer-events:none">
+    <div style="position:absolute;left:0;right:0;bottom:{{ subBottom }};display:flex;justify-content:center;padding:0 8vw;pointer-events:none">
       <div style="text-align:center;color:#fff;font-size:clamp(16px,2.2vw,26px);font-weight:500;line-height:1.4;text-shadow:0 2px 6px rgba(0,0,0,0.9),0 0 2px rgba(0,0,0,0.9);text-wrap:pretty">{{ subLine }}</div>
     </div>
 
-    <div style="position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:14px;padding:18px clamp(16px,3vw,28px);background:linear-gradient(180deg,rgba(0,0,0,0.75),transparent)">
-      <button onClick="{{ leavePlayer }}" style="width:34px;height:34px;flex:none;border-radius:9px;border:1px solid rgba(255,255,255,0.16);background:rgba(0,0,0,0.35);color:#fff;font-family:'JetBrains Mono',monospace;font-size:14px" style-hover="background:rgba(255,255,255,0.14)">←</button>
+    <div style="position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:14px;padding:{{ topPad }};background:linear-gradient(180deg,rgba(0,0,0,0.75),transparent)">
+      <button onClick="{{ leavePlayer }}" title="Back" style="width:40px;height:40px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:50%;border:none;background:rgba(0,0,0,0.45);box-shadow:0 0 0 1px rgba(255,255,255,0.12);color:#fff;transition:background .15s,transform .15s" style-hover="background:rgba(0,0,0,0.65)" style-active="transform:scale(0.92)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M15 5l-7 7 7 7"></path></svg></button>
       <div style="min-width:0">
         <div style="font-size:14.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff">{{ playerTitle }}</div>
         <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:2px">{{ playerSub }}</div>
       </div>
     </div>
 
-    <div style="position:absolute;left:0;right:0;bottom:0;padding:52px clamp(16px,3vw,28px) 22px;background:linear-gradient(0deg,rgba(0,0,0,0.85),transparent)">
+    <div style="position:absolute;left:0;right:0;bottom:0;padding:{{ ctrlPad }};background:linear-gradient(0deg,rgba(0,0,0,0.85),transparent)">
       <div onClick="{{ seek }}" style="position:relative;height:16px;display:flex;align-items:center;cursor:pointer;margin-bottom:12px">
         <div style="height:4px;width:100%;border-radius:4px;background:rgba(255,255,255,0.2)"></div>
         <div style="position:absolute;left:0;height:4px;border-radius:4px;background:oklch(0.84 0.14 155);width:{{ pct }}%"></div>
         <div style="position:absolute;width:12px;height:12px;border-radius:50%;background:#fff;left:{{ pct }}%;margin-left:-6px"></div>
       </div>
 
-      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px">
-        <button onClick="{{ togglePlay }}" style="width:40px;height:40px;flex:none;border-radius:10px;border:none;background:#fff;color:#000;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">{{ playGlyph }}</button>
-        <button onClick="{{ back10 }}" title="Back 10s" style="width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.06)" style-hover="background:rgba(255,255,255,0.16)">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5A8 8 0 1 1 4 13"></path><path d="M14.5 2.5 12 5l2.5 2.5"></path><text x="12" y="16.2" text-anchor="middle" font-family="Sora, sans-serif" font-size="6.6" font-weight="600" fill="#fff" stroke="none">10</text></svg>
-        </button>
-        <button onClick="{{ fwd10 }}" title="Forward 10s" style="width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.06)" style-hover="background:rgba(255,255,255,0.16)">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a8 8 0 1 0 8 8"></path><path d="M9.5 2.5 12 5 9.5 7.5"></path><text x="12" y="16.2" text-anchor="middle" font-family="Sora, sans-serif" font-size="6.6" font-weight="600" fill="#fff" stroke="none">10</text></svg>
-        </button>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,0.7);margin-left:4px;white-space:nowrap">{{ timeLabel }}</div>
-        <div style="flex:1;min-width:8px"></div>
-        <button onClick="{{ nextEp }}" title="Next episode" style="width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.06)" style-hover="background:rgba(255,255,255,0.16)">
-          <svg width="17" height="17" viewBox="0 0 20 20" fill="none"><path d="M3 3L13 10L3 17V3Z" fill="#fff"></path><rect x="15" y="3" width="2.6" height="14" rx="1" fill="#fff"></rect></svg>
-        </button>
-        <button onClick="{{ toggleDrawer }}" title="Episodes" style="width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid {{ drawerBtnBorder }};background:{{ drawerBtnBg }}" style-hover="background:rgba(255,255,255,0.16)">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="12" height="2" rx="1" fill="#fff"></rect><rect x="2" y="9" width="12" height="2" rx="1" fill="#fff"></rect><rect x="2" y="14" width="8" height="2" rx="1" fill="#fff"></rect><path d="M14.5 13.2L18.5 15.6L14.5 18V13.2Z" fill="#fff"></path></svg>
-        </button>
-        <button onClick="{{ toggleFs }}" title="{{ fsLabel }}" style="width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.06)" style-hover="background:rgba(255,255,255,0.16)">
-          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="{{ fsPath }}"></path></svg>
-        </button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <sc-if value="{{ deskPlayer }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ togglePlay }}" title="Play / pause" style="width:44px;height:44px;flex:none;border-radius:50%;border:none;background:oklch(0.84 0.14 155);color:#06140c;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;box-shadow:0 6px 20px oklch(0.84 0.14 155 / 0.3);margin-right:4px;transition:transform .15s" style-hover="transform:scale(1.05)" style-active="transform:scale(0.94)"><sc-if value="{{ playing }}" hint-placeholder-val="{{ true }}"><svg width="40%" height="40%" viewBox="0 0 24 24" fill="currentColor"><rect x="5.5" y="4" width="4.5" height="16" rx="1.6"></rect><rect x="14" y="4" width="4.5" height="16" rx="1.6"></rect></svg></sc-if><sc-if value="{{ paused }}" hint-placeholder-val="{{ false }}"><svg width="42%" height="42%" viewBox="0 0 24 24" fill="currentColor" style="margin-left:6%"><path d="M7 4.7v14.6a1.2 1.2 0 0 0 1.8 1l11.6-7.3a1.2 1.2 0 0 0 0-2L8.8 3.7A1.2 1.2 0 0 0 7 4.7z"></path></svg></sc-if></button>
+          <button onClick="{{ back10 }}" title="Back 10s" style="width:40px;height:40px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:50%;border:none;background:transparent;color:#fff;transition:background .15s,transform .15s" style-hover="background:rgba(255,255,255,0.14)" style-active="transform:scale(0.92)">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5A8 8 0 1 1 4 13"></path><path d="M14.5 2.5 12 5l2.5 2.5"></path><text x="12" y="16.2" text-anchor="middle" font-family="Sora, sans-serif" font-size="6.6" font-weight="600" fill="#fff" stroke="none">10</text></svg>
+          </button>
+          <button onClick="{{ fwd10 }}" title="Forward 10s" style="width:40px;height:40px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:50%;border:none;background:transparent;color:#fff;transition:background .15s,transform .15s" style-hover="background:rgba(255,255,255,0.14)" style-active="transform:scale(0.92)">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a8 8 0 1 0 8 8"></path><path d="M9.5 2.5 12 5 9.5 7.5"></path><text x="12" y="16.2" text-anchor="middle" font-family="Sora, sans-serif" font-size="6.6" font-weight="600" fill="#fff" stroke="none">10</text></svg>
+          </button>
+        </sc-if>
+        <div style="flex:1;min-width:0;margin-left:6px;font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,0.78);white-space:nowrap">{{ timeLabel }}</div>
+        <button onClick="{{ nextEp }}" title="Next episode" style="width:40px;height:40px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:50%;border:none;background:transparent;color:#fff;transition:background .15s,transform .15s" style-hover="background:rgba(255,255,255,0.14)" style-active="transform:scale(0.92)">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 4.4v11.2a1 1 0 0 0 1.55.83l8.2-5.6a1 1 0 0 0 0-1.66l-8.2-5.6A1 1 0 0 0 4 4.4z" fill="#fff"></path><rect x="15.2" y="3.5" width="2.4" height="13" rx="1.2" fill="#fff"></rect></svg>
+          </button>
+        <button onClick="{{ toggleDrawer }}" title="Episodes" style="width:40px;height:40px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:50%;border:none;background:{{ drawerBtnBg }};color:#fff;transition:background .15s,transform .15s" style-hover="background:rgba(255,255,255,0.14)" style-active="transform:scale(0.92)">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="12" height="2" rx="1" fill="#fff"></rect><rect x="2" y="9" width="12" height="2" rx="1" fill="#fff"></rect><rect x="2" y="14" width="8" height="2" rx="1" fill="#fff"></rect><path d="M14.5 13.9v3.4a.6.6 0 0 0 .9.5l2.8-1.7a.6.6 0 0 0 0-1l-2.8-1.7a.6.6 0 0 0-.9.5z" fill="#fff"></path></svg>
+          </button>
+        <button onClick="{{ toggleFs }}" title="{{ fsLabel }}" style="width:40px;height:40px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:50%;border:none;background:transparent;color:#fff;transition:background .15s,transform .15s" style-hover="background:rgba(255,255,255,0.14)" style-active="transform:scale(0.92)">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ fsPath }}"></path></svg>
+          </button>
       </div>
     </div>
 
+    <sc-if value="{{ touchPlayer }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:clamp(22px,6vw,48px)">
+      <button onClick="{{ back10 }}" title="Back 10s" style="width:52px;height:52px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:50%;border:none;background:rgba(0,0,0,0.45);color:#fff;transition:background .15s,transform .15s;box-shadow:0 0 0 1px rgba(255,255,255,0.12)" style-hover="background:rgba(0,0,0,0.65)" style-active="transform:scale(0.92)">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5A8 8 0 1 1 4 13"></path><path d="M14.5 2.5 12 5l2.5 2.5"></path><text x="12" y="16.2" text-anchor="middle" font-family="Sora, sans-serif" font-size="6.6" font-weight="600" fill="#fff" stroke="none">10</text></svg>
+          </button>
+      <button onClick="{{ togglePlay }}" title="Play / pause" style="width:{{ playSize }};height:{{ playSize }};flex:none;border-radius:50%;border:none;background:oklch(0.84 0.14 155);color:#06140c;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;box-shadow:0 8px 28px oklch(0.84 0.14 155 / 0.35);transition:transform .15s" style-hover="transform:scale(1.05)" style-active="transform:scale(0.94)"><sc-if value="{{ playing }}" hint-placeholder-val="{{ true }}"><svg width="40%" height="40%" viewBox="0 0 24 24" fill="currentColor"><rect x="5.5" y="4" width="4.5" height="16" rx="1.6"></rect><rect x="14" y="4" width="4.5" height="16" rx="1.6"></rect></svg></sc-if><sc-if value="{{ paused }}" hint-placeholder-val="{{ false }}"><svg width="42%" height="42%" viewBox="0 0 24 24" fill="currentColor" style="margin-left:6%"><path d="M7 4.7v14.6a1.2 1.2 0 0 0 1.8 1l11.6-7.3a1.2 1.2 0 0 0 0-2L8.8 3.7A1.2 1.2 0 0 0 7 4.7z"></path></svg></sc-if></button>
+      <button onClick="{{ fwd10 }}" title="Forward 10s" style="width:52px;height:52px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:50%;border:none;background:rgba(0,0,0,0.45);color:#fff;transition:background .15s,transform .15s;box-shadow:0 0 0 1px rgba(255,255,255,0.12)" style-hover="background:rgba(0,0,0,0.65)" style-active="transform:scale(0.92)">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a8 8 0 1 0 8 8"></path><path d="M9.5 2.5 12 5 9.5 7.5"></path><text x="12" y="16.2" text-anchor="middle" font-family="Sora, sans-serif" font-size="6.6" font-weight="600" fill="#fff" stroke="none">10</text></svg>
+          </button>
+    </div>
+    </sc-if>
+
     <sc-if value="{{ drawerOpen }}" hint-placeholder-val="{{ false }}">
       <div onClick="{{ toggleDrawer }}" style="position:absolute;inset:0"></div>
-      <div style="position:absolute;right:clamp(12px,3vw,28px);bottom:96px;width:min(380px,calc(100% - 24px));max-height:min(540px,calc(100% - 180px));display:flex;flex-direction:column;border-radius:22px;background:#17181c;border:1px solid rgba(255,255,255,0.1);box-shadow:0 30px 80px -10px rgba(0,0,0,0.75);overflow:hidden;transform-origin:bottom right;animation:pop .22s cubic-bezier(.2,.7,.2,1)">
+      <div style="position:absolute;right:{{ drawerRight }};top:{{ drawerTop }};bottom:{{ drawerBottom }};width:min(380px,calc(100% - 24px));max-height:{{ drawerMaxH }};display:flex;flex-direction:column;border-radius:22px;background:#17181c;border:1px solid rgba(255,255,255,0.1);box-shadow:0 30px 80px -10px rgba(0,0,0,0.75);overflow:hidden;transform-origin:bottom right;animation:pop .22s cubic-bezier(.2,.7,.2,1)">
         <div style="display:flex;align-items:center;gap:12px;padding:16px 14px 12px 18px">
           <div style="flex:1;min-width:0">
-            <div style="font-size:15px;font-weight:600;letter-spacing:-0.01em">{{ seasonName }}</div>
+            <div style="font-size:15px;font-weight:600;letter-spacing:-0.01em">Episodes</div>
             <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7a7a82;margin-top:3px">{{ drawerSub }}</div>
           </div>
-          <button onClick="{{ toggleDrawer }}" title="Close" style="width:32px;height:32px;flex:none;display:flex;align-items:center;justify-content:center;border:none;border-radius:50%;background:#24252a;color:#b9b9c0" style-hover="background:#2e2f35;color:#fff"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+          <button onClick="{{ toggleDrawer }}" title="Close" style="width:32px;height:32px;flex:none;display:flex;align-items:center;justify-content:center;border:none;border-radius:50%;background:#24252a;color:#b9b9c0" style-hover="background:#2e2f35;color:#fff"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
         </div>
+        <sc-if value="{{ drawerHasTabs }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:none;display:flex;align-items:center;gap:6px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;padding:2px 14px 12px 18px;border-bottom:1px solid rgba(255,255,255,0.07);margin-bottom:6px">
+            <sc-for list="{{ drawerSeasons }}" as="t" hint-placeholder-count="3">
+              <button onClick="{{ t.select }}" style="flex:none;display:flex;align-items:center;gap:6px;height:32px;padding:0 13px;border-radius:999px;border:1px solid {{ t.border }};background:{{ t.bg }};color:{{ t.fg }};font-size:12.5px;font-weight:500;white-space:nowrap;transition:background .15s" style-hover="border-color:rgba(255,255,255,0.28)">{{ t.name }}<sc-if value="{{ t.isPlaying }}" hint-placeholder-val="{{ false }}"><span style="width:6px;height:6px;border-radius:50%;background:{{ t.dot }}"></span></sc-if></button>
+            </sc-for>
+          </div>
+        </sc-if>
         <div style="flex:1;overflow-y:auto;padding:4px 8px 10px;display:flex;flex-direction:column;gap:2px">
-          <sc-for list="{{ episodes }}" as="e" hint-placeholder-count="8">
+          <sc-for list="{{ drawerEps }}" as="e" hint-placeholder-count="8">
             <button onClick="{{ e.play }}" style="display:flex;align-items:center;gap:12px;padding:7px;background:{{ e.rowBg }};border:1px solid {{ e.rowBorder }};border-radius:14px;text-align:left;color:#ececee" style-hover="background:#202126">
               <div style="position:relative;width:76px;aspect-ratio:16/10;flex:none;border-radius:9px;background:{{ e.thumb }};overflow:hidden;display:flex;align-items:flex-end;padding:5px 7px">
                 <div style="position:absolute;inset:0;background:{{ e.dim }}"></div>
@@ -1154,11 +1179,11 @@ const CATALOG = [
 /* Episode counts per allanime entry — the one thing ani-cli does return. */
 const EP_COUNTS = { aot:[25,12,22,28], fma:[33,31], mob:[12,13,12], csm:[12], vin:[24,24], spy:[12,25], fri:[28], ode:[13], brl:[12], dun:[24] };
 const NAV = [
-  { id:'home', label:'Home', icon:'M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z' },
+  { id:'home', label:'Home', icon:'M3.5 10.2 12 3.6l8.5 6.6v8.3a1.5 1.5 0 0 1-1.5 1.5h-4v-6H9v6H5a1.5 1.5 0 0 1-1.5-1.5z' },
   { id:'library', label:'Library', icon:'M5.5 4v16M10 4v16M14 4.6l4.8 15' },
-  { id:'releases', label:'New releases', icon:'M4 6.5h16v13.5H4zM4 10.5h16M8.5 3.5v4M15.5 3.5v4' },
-  { id:'import', label:'Import', icon:'M14 3H6v18h12V7zM14 3v4h4M12 10.5v7M8.5 14h7' },
-  { id:'download', label:'Download', icon:'M12 4v11M7.5 10.5 12 15l4.5-4.5M5 20h14' }
+  { id:'releases', label:'New releases', icon:'M6.5 5h11A2.5 2.5 0 0 1 20 7.5v10a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-10A2.5 2.5 0 0 1 6.5 5zM4 10h16M8.5 3v4M15.5 3v4' },
+  { id:'import', label:'Import', icon:'M13.5 3h-6A2.5 2.5 0 0 0 5 5.5v13A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V8.5zM13.5 3v3.5a2 2 0 0 0 2 2H19M12 11.5v6M9 14.5h6' },
+  { id:'download', label:'Download', icon:'M12 4v10.5M7.5 10 12 14.5l4.5-4.5M5 19.5h14' }
 ];
 /* ani-cli -d writes to $ANI_CLI_DOWNLOAD_DIR (default: current dir). Sizes are estimates per quality. */
 const DL_MB = { best:1380, '1080':1380, '720':620, '480':310, '360':180 };
@@ -1199,8 +1224,8 @@ const ADDED = [
   { id:'mob', s:2, e:12, ago:'2 days ago' }, { id:'fri', s:0, e:28, ago:'3 days ago' }, { id:'vin', s:1, e:24, ago:'4 days ago' }
 ];
 const IC = {
-  play:'M7 4.5l12 7.5-12 7.5z', restart:'M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4', go:'M5 12h14M13 6l6 6-6 6',
-  check:'M5 12.5l4.5 4.5L19 7.5', remove:'M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13',
+  play:'M8 5.2v13.6a1 1 0 0 0 1.5.86l11-6.8a1 1 0 0 0 0-1.72l-11-6.8A1 1 0 0 0 8 5.2z', restart:'M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4', go:'M5 12h14M13 6l6 6-6 6',
+  check:'M5 12.5l4.5 4.5L19 7.5', remove:'M4.5 7h15M9.5 7V5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2M6.5 7l.9 12a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4l.9-12',
   heart:'M12 20.5 3.8 12.3a5 5 0 0 1 7.1-7.1l1.1 1.1 1.1-1.1a5 5 0 1 1 7.1 7.1Z'
 };
 /* Library entries — one per allanime entry (anime + season). Mirrors users/{uid}/library/{entryId}. */
@@ -1285,6 +1310,7 @@ class Component extends DCLogic {
     impGroups: IMP_DEMO, impFilter:'All', dragOver:false, importDone:0, uploading:false,
     profileOpen:false, drawerOpen:false, fs:false,
     mobile: typeof window !== 'undefined' && window.innerWidth < 760,
+    short: typeof window !== 'undefined' && window.innerHeight < 500 && window.innerWidth > window.innerHeight,
     audio:'Sub', quality:'best',
     prefs:{ tab:'account', autoplay:true, skip:true, resume:true, threshold:'90%', dlDir:'~/Videos/ani-cli', autoDelete:false, confirm:null },
     relScope:'All', relWeek:0, relDir:0, notify:['Blue Lock|5', 'Frieren Season 2'],
@@ -1294,8 +1320,15 @@ class Component extends DCLogic {
     recent:['frieren','odd taxi','bocchi','dungeon meshi']
   };
   componentDidMount() {
-    this.onResize = () => { const m = window.innerWidth < 760; if (m !== this.state.mobile) this.setState({ mobile: m }); };
+    this.onResize = () => { const m = window.innerWidth < 760, sh = window.innerHeight < 500 && window.innerWidth > window.innerHeight; if (m !== this.state.mobile || sh !== this.state.short) this.setState({ mobile: m, short: sh }); };
     window.addEventListener('resize', this.onResize);
+    try {
+      const sc = new URLSearchParams(window.location.search).get('screen');
+      const MAP = { signin:{ route:'auth', authStep:'signin' }, welcome:{ route:'auth', authStep:'welcome' }, home:{ route:'home' }, search:{ route:'search', query:'frieren' }, library:{ route:'library' }, import:{ route:'import' }, download:{ route:'download' }, releases:{ route:'releases' }, settings:{ route:'settings' }, anime:{ route:'anime', animeId:'fri', season:0 }, player:{ route:'player', animeId:'aot', season:0, ep:7, t:412, playing:false } };
+      if (sc && MAP[sc]) this.setState(MAP[sc]);
+      if (new URLSearchParams(window.location.search).get('drawer')) this.setState({ drawerOpen:true });
+      if (this.state.mobile && sc === 'import') this.setState({ route:'home' });
+    } catch (e) {}
     this.onKey = ev => {
       const tag = (ev.target.tagName || '').toLowerCase();
       if (ev.key === '/' && tag !== 'input' && tag !== 'textarea' && this.searchRef.current) { ev.preventDefault(); this.searchRef.current.focus(); }
@@ -1723,7 +1756,7 @@ class Component extends DCLogic {
         { kind:'text', label:'Display name', desc:'Shown in the sidebar. Defaults to your Google name.', value: p.display ?? 'ivanivamar', onChange: e => set({ display: e.target.value }) },
         { kind:'button', label:'Other sessions', desc:'Signed in on 2 other devices', btnLabel:'Sign out everywhere', action: () => {} }
       ] },
-      playback: { name:'Playback', icon:'M7 4.5v15l12-7.5z', desc:'Defaults for every episode you start. Search filters use the same audio and quality.', rows: [
+      playback: { name:'Playback', icon:'M8 5.2v13.6a1 1 0 0 0 1.5.86l11-6.8a1 1 0 0 0 0-1.72l-11-6.8A1 1 0 0 0 8 5.2z', desc:'Defaults for every episode you start. Search filters use the same audio and quality.', rows: [
         seg('Audio', 'Subtitles are burned into the stream. Dub depends on the show.', ['Sub', 'Dub'], st.audio, v => this.setState({ audio:v })),
         { kind:'dd', label:'Quality', desc:'Falls back to the closest available stream.', dd: this.ddTrigger('set-q', { value: st.quality, title:'Streaming quality', minW:200, options: qOpts(v => this.setState({ quality:v }), ['best','1080','720','480','360','worst']) }) },
         toggle('autoplay', 'Autoplay next episode', 'Starts the next episode when one ends.'),
@@ -1731,7 +1764,7 @@ class Component extends DCLogic {
         toggle('resume', 'Resume where you left off', 'Opens episodes at your last position.'),
         seg('Mark as watched at', 'Progress needed before an episode counts as watched.', ['80%', '90%', '95%'], p.threshold, v => set({ threshold:v }))
       ] },
-      downloads: { name:'Downloads', icon:'M12 4v11M7.5 10.5 12 15l4.5-4.5M5 20h14', desc:'Where ani-cli saves episodes and what it keeps.', rows: [
+      downloads: { name:'Downloads', icon:'M12 4v10.5M7.5 10 12 14.5l4.5-4.5M5 19.5h14', desc:'Where ani-cli saves episodes and what it keeps.', rows: [
         { kind:'text', label:'Download folder', desc:'Sets ANI_CLI_DOWNLOAD_DIR', value: p.dlDir, onChange: e => set({ dlDir: e.target.value }) },
         { kind:'dd', label:'Download quality', desc:'Used for new downloads.', dd: this.ddTrigger('set-dlq', { value: st.dlQ, title:'Download quality', minW:200, options: qOpts(v => this.setState({ dlQ:v }), ['best','1080','720','480','360']) }) },
         toggle('autoDelete', 'Delete after watching', 'Removes the file once an episode is marked watched.')
@@ -2102,10 +2135,19 @@ class Component extends DCLogic {
           go: () => this.setState({ route:n.id, profileOpen:false }) };
       }),
       isDownload: st.route === 'download',
+      mobileNav: NAV.filter(n => n.id !== 'import' && n.id !== 'download').map(n => {
+        const on = st.route === n.id;
+        return { label: n.id === 'releases' ? 'Releases' : n.label, icon:n.icon,
+          fg: on ? '#ececee' : '#8b8b93',
+          iconColor: on ? 'oklch(0.84 0.14 155)' : '#7a7a82',
+          go: () => this.setState({ route:n.id, profileOpen:false }) };
+      }),
       isSettings: st.route === 'settings',
       isReleases: st.route === 'releases',
       ...this.relVals(st, pill),
       goSettings: () => this.setState({ route:'settings', profileOpen:false }),
+      goDownload: () => this.setState({ route:'download', profileOpen:false }),
+      dlActiveCount: st.dlJobs.length ? st.dlJobs.length + ' active' : '',
       ...this.settingsVals(st, pill),
       ...this.dlVals(st, pill),
       closeProfile: () => this.setState({ profileOpen:false }),
@@ -2120,8 +2162,8 @@ class Component extends DCLogic {
         group('Quality', 'quality', ['best', '1080', '720', '480', '360', 'worst'])
       ],
       fsPath: st.fs
-        ? 'M8 2v6H2M12 18v-6h6'
-        : 'M2 7V2h5M18 13v5h-5M13 2h5v5M7 18H2v-5',
+        ? 'M7.5 2.5v3a2 2 0 0 1-2 2h-3M12.5 17.5v-3a2 2 0 0 1 2-2h3M17.5 7.5h-3a2 2 0 0 1-2-2v-3M2.5 12.5h3a2 2 0 0 1 2 2v3'
+        : 'M2.5 7V4.5a2 2 0 0 1 2-2H7M17.5 13v2.5a2 2 0 0 1-2 2H13M13 2.5h2.5a2 2 0 0 1 2 2V7M7 17.5H4.5a2 2 0 0 1-2-2V13',
       isAnime: st.route === 'anime', isPlayer: st.route === 'player',
       mainRef: this.mainRef, chromeRef: this.chromeRef, playerRef: this.playerRef,
       gridCols: 'repeat(auto-fill,minmax(' + (dense ? 150 : 196) + 'px,1fr))',
@@ -2197,7 +2239,7 @@ class Component extends DCLogic {
           border: isNext ? 'oklch(0.84 0.14 155)' : 'rgba(255,255,255,0.08)',
           ring: isNext ? '0 0 0 3px oklch(0.84 0.14 155 / 0.18), 0 14px 30px -12px rgba(0,0,0,0.7)' : '0 10px 24px -14px rgba(0,0,0,0.7)',
           hasBadge: done || isNext,
-          badge: isNext ? (p > 0 ? '▶ ' + Math.round(p * 100) + '%' : '▶ UP NEXT') : '✓',
+          badge: isNext ? (p > 0 ? Math.round(p * 100) + '%' : 'UP NEXT') : 'WATCHED',
           badgeBg: isNext ? 'oklch(0.84 0.14 155)' : 'rgba(0,0,0,0.55)',
           badgeFg: isNext ? '#08110c' : 'rgba(255,255,255,0.75)',
           segBg: done ? 'oklch(0.84 0.14 155)' : p > 0 ? 'oklch(0.6 0.1 155)' : 'rgba(255,255,255,0.1)',
@@ -2214,6 +2256,7 @@ class Component extends DCLogic {
       playerTitle: cur.title,
       playerSub: cur.seasons[st.season] + ' · Episode ' + st.ep,
       playGlyph: st.playing ? '❚❚' : '▶',
+      playing: st.playing, paused: !st.playing,
       togglePlay: () => this.setState(s => ({ playing: !s.playing })),
       back10: () => this.setState(s => ({ t: Math.max(0, s.t - 10) })),
       fwd10: () => this.setState(s => ({ t: Math.min(dur, s.t + 10) })),
@@ -2221,16 +2264,48 @@ class Component extends DCLogic {
       leavePlayer: () => this.setState({ route:'anime', playing:false }),
       pct: ((st.t / dur) * 100).toFixed(2),
       timeLabel: this.fmt(st.t) + ' / ' + this.fmt(dur),
+      subBottom: st.short ? '84px' : '112px',
+      topPad: st.short ? '14px 56px' : '18px clamp(16px,3vw,28px)',
+      ctrlPad: st.short ? '36px 56px 14px' : '52px clamp(16px,3vw,28px) 22px',
+      playSize: st.short ? '60px' : '68px',
+      touchPlayer: st.mobile || st.short, deskPlayer: !(st.mobile || st.short),
+      drawerRight: st.short ? '56px' : 'clamp(12px,3vw,28px)',
+      drawerTop: st.short ? '12px' : 'auto',
+      drawerBottom: st.short ? '12px' : '86px',
+      drawerMaxH: st.short ? 'none' : 'min(540px,calc(100% - 180px))',
+      timeCur: this.fmt(st.t), timeDur: '-' + this.fmt(Math.max(0, dur - st.t)),
       seek: e => {
         const r = e.currentTarget.getBoundingClientRect();
         this.setState({ t: Math.round(((e.clientX - r.left) / r.width) * dur) });
       },
       subLine: st.audio === 'Dub' ? '' : SUB_LINE,
       drawerOpen: st.drawerOpen,
-      drawerSub: 'E' + String(st.ep).padStart(2, '0') + ' of ' + epTotal + ' · ' + eps.filter(e => this.prog(cur.id, st.season, e.n) >= 0.98).length + ' watched',
+      ...(() => {
+        const ds = st.dSeason == null ? st.season : st.dSeason;
+        const n = this.epCount(cur, ds);
+        const list = Array.from({ length: n }, (_, i) => i + 1);
+        const doneN = list.filter(k => this.prog(cur.id, ds, k) >= 0.98).length;
+        return {
+          drawerHasTabs: cur.seasons.length > 1,
+          drawerSeasons: cur.seasons.map((name, i) => Object.assign({ name, isPlaying: i === st.season, dot: i === ds ? '#08110c' : 'oklch(0.84 0.14 155)',
+            select: () => this.setState({ dSeason: i }) }, pill(i === ds))),
+          drawerSub: (ds === st.season ? 'E' + String(st.ep).padStart(2, '0') + ' of ' + n : n + ' episodes') + ' · ' + doneN + ' watched',
+          drawerEps: list.map(k => {
+            const p = this.prog(cur.id, ds, k), done = p >= 0.98, now = ds === st.season && k === st.ep;
+            const hu = (HUE[cur.id] ?? 160) + ((k * 37) % 50) - 25, ang = 110 + ((k * 53) % 140), lit = 0.42 + ((k * 13) % 7) * 0.025;
+            return { numLabel: String(k).padStart(2, '0'), title: 'Episode ' + k, hasProg: p > 0 && !done, progWidth: Math.round(p * 100) + '%',
+              thumb: 'linear-gradient(' + ang + 'deg, oklch(' + lit + ' 0.1 ' + hu + '), oklch(0.24 0.05 ' + (hu + 30) + ') 75%)',
+              dim: done ? 'rgba(12,12,14,0.55)' : 'transparent', numFg: done ? 'rgba(255,255,255,0.45)' : '#fff',
+              rowBg: now ? '#1d2420' : 'transparent', rowBorder: now ? 'oklch(0.84 0.14 155 / 0.35)' : 'transparent', isCurrent: now,
+              sub: now ? 'Now playing' : done ? 'Watched' : p > 0 ? Math.round(p * 100) + '% watched' : 'Not started',
+              subFg: now ? 'oklch(0.86 0.13 155)' : '#7a7a82',
+              play: () => this.setState({ route:'player', season: ds, ep: k, t: Math.round(p * 1420), playing:true, drawerOpen:false, dSeason:null }) };
+          })
+        };
+      })(),
       drawerBtnBg: st.drawerOpen ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.06)',
       drawerBtnBorder: st.drawerOpen ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.16)',
-      toggleDrawer: () => this.setState(s => ({ drawerOpen: !s.drawerOpen })),
+      toggleDrawer: () => this.setState(s => ({ drawerOpen: !s.drawerOpen, dSeason: null })),
       fsLabel: st.fs ? 'EXIT' : 'FULL',
       toggleFs: () => {
         const el = document.documentElement;

@@ -148,9 +148,16 @@ home `clamp(40px,5vw,60px)`. Poster grid `repeat(auto-fill, minmax(196px,1fr))` 
   `rgba(255,255,255,.07)` border, bg `#111216`, own scroll container. Background layer sits inside it.
 
 **Mobile (<760px): bottom nav.** No sidebar, no inset panel; page scrolls normally. Logo appears
-left of the search bar. Fixed bottom nav, 6 equal columns (5 nav items + Profile avatar),
-`#0e0f12`, top hairline, 54px min targets, 10.5px labels, safe-area padding. Profile popover
-anchors `right:10px; bottom: calc(76px + env(safe-area-inset-bottom))`.
+left of the search bar. Fixed bottom nav, **4 equal columns: Home, Library, Releases, Profile**
+(avatar), `#0e0f12`, top hairline, 54px min targets, 10.5px labels, safe-area padding.
+- **Downloads** moves into the profile popover on mobile (first item, with mono "N active" count),
+  above Settings and Log out.
+- **Import is desktop-only.** It is not reachable on phones; a direct `/import` visit on mobile
+  redirects to Home.
+- Profile popover anchors `right:10px; bottom: calc(76px + env(safe-area-inset-bottom))`.
+
+**Landscape phone (height <500px and width > height).** Only the Watch screen is designed for it
+(full-screen playback). See screen 6 for the compact values.
 
 **Header (all chrome pages):** pill search bar, max 620px, 48px, radius 999, `#1a1b1f`.
 Focus: bg `#1f2025`, border `oklch(0.84 0.14 155 / .55)`, focus ring, icon goes mint. Right side
@@ -211,7 +218,8 @@ error** card (red dot, "Source unavailable", explanation, mono log, Retry + Back
 results when the backend reports an upstream failure.
 
 ### 5. Anime detail — `/anime/:entryId`
-Back link, hero (216px poster, title, year • status, genre chips, synopsis, mint **Play E1 /
+Back button (36px pill, `#16171b`, 1px `rgba(255,255,255,.1)` border, rounded chevron +
+"Back", 13px/500 `#c9c9cf`, hover `#202126`), hero (216px poster, title, year • status, genre chips, synopsis, mint **Play E1 /
 Resume E7**, outline **+ Add to favourites ⇄ Saved ✓**). Season pills. Mono row:
 "N episodes · each season is a separate ani-cli entry" + "X / N watched". A 6px segmented
 progress strip (one clickable segment per episode: watched accent, partial `oklch(0.6 0.1 155)`,
@@ -223,24 +231,49 @@ border + glow ring + "▶ UP NEXT" or "▶ 42%" badge; **watched** = dimmed over
 partial = 3px progress bar. ani-cli provides no episode titles or durations.
 
 ### 6. Watch — `/watch/:entryId/:ep`
-Full viewport, black, no chrome. Click video to play/pause. Top gradient bar: 34px back button,
-title, "Season · Episode". Hardsub sample line at `bottom:132px` (subs are burned in; drop this
-layer in production). Bottom gradient controls:
+Full viewport, black, no chrome. Click video to play/pause. Top gradient bar: **40px round back
+button** (`rgba(0,0,0,.45)`, 1px `rgba(255,255,255,.12)` ring, rounded chevron icon `M15 5l-7 7 7 7`,
+stroke 2), title, "Season · Episode". Hardsub sample line at `bottom:112px` (84px landscape; subs
+are burned in, drop this layer in production). Bottom gradient controls, padding
+`52px clamp(16px,3vw,28px) 22px`:
 - Scrub bar: 4px track, mint fill, 12px white knob, 16px hit area, click to seek.
-- Row: 40px white play/pause, **rewind 10 / forward 10** (circular arrow with "10" inside —
-  counter-clockwise for back, clockwise for forward), mono timecode, spacer, next episode,
-  episodes, fullscreen. Icon buttons 38px, radius 9, `rgba(255,255,255,.06)` + `.16` border.
+- **Desktop footer row**, left → right: **play/pause** 44px mint circle (`#06140c` glyph, glow
+  `0 6px 20px accent/.3`), **rewind 10**, **forward 10** (40px transparent round, circular arrow
+  with "10" inside — counter-clockwise back, clockwise forward), mono timecode `6:52 / 23:40`
+  (12px, `rgba(255,255,255,.78)`), spacer, **next episode**, **episodes**, **fullscreen**
+  (always far right). Right-side buttons 40px round, transparent, hover `rgba(255,255,255,.14)`,
+  active `scale(.92)`. Episodes button bg `rgba(255,255,255,.2)` while the popup is open.
+- **Touch layout (phone portrait and landscape)**: rewind / play / forward move to the **centre of
+  the video** (absolute, centred, gap `clamp(22px,6vw,48px)`). Skip buttons 52px,
+  `rgba(0,0,0,.45)` + 1px `rgba(255,255,255,.12)` ring; play 68px (60px landscape) mint circle with
+  `0 8px 28px accent/.35` glow. The footer keeps only timecode left and next / episodes /
+  fullscreen right.
+- Play/pause glyphs are SVG: pause = two rounded rects (rx 1.6), play = rounded triangle.
+- **Landscape compact values**: top bar padding `14px 56px`, controls padding `36px 56px 14px`
+  (56px side inset clears the camera cutout); status bar hidden.
 - **Episodes popup** (not a side drawer): anchored bottom-right above controls
-  (`right:clamp(12px,3vw,28px); bottom:96px`), `min(380px, 100%-24px)` wide, max 540px tall,
-  radius 22, opaque `#17181c`, `transform-origin: bottom right`, pop animation .22s. Header:
-  season name + mono "E07 of 25 · 6 watched", round close. Rows: 76px 16:10 thumb with number
-  and progress, "Episode N", status ("Now playing" mint / Watched / 42% watched / Not started).
-  Current row `#1d2420` with mint border and a 3-bar equalizer glyph. Click outside closes.
+  (`right:clamp(12px,3vw,28px); bottom:86px`), `min(380px, 100%-24px)` wide, max
+  `min(540px, 100%-180px)` tall, radius 22, opaque `#17181c`, `transform-origin: bottom right`,
+  pop animation .22s. In landscape it becomes a full-height sheet: `top:12px; bottom:12px;
+  right:56px`, no max height.
+  - Header: "Episodes" + mono subline ("E07 of 25 · 6 watched" for the playing season,
+    "N episodes · X watched" for others), round close.
+  - **Season tabs** (only when the entry has >1 season): horizontally scrolling pill row
+    (`flex:none`, 32px pills, 12.5px/500, gap 6, padding `2px 14px 12px 18px`, hairline below).
+    Active tab uses pill colors; the season currently playing carries a 6px dot. Switching tabs
+    only changes what the list shows (`dSeason`); playback is unchanged until an episode is
+    picked. Picking an episode from another season sets `season` + `ep` and closes the popup.
+    Reopening the popup resets the tab to the playing season.
+  - Rows: 76px 16:10 thumb with number and progress, "Episode N", status ("Now playing" mint /
+    Watched / 42% watched / Not started). Current row `#1d2420` with mint border and a 3-bar
+    equalizer glyph. Click outside closes.
 - No CC button (no subtitle tracks from ani-cli).
 
 ### 7. Library — `/library`
-"Library" + count. Status pills with counts (All, Watching, Plan to watch, Completed, Dropped),
-sort dropdown (Recently watched / Title A–Z / Progress), grid/list toggle. Grid card: status pill
+"Library" + count. Status pills with counts (All, Watching, Plan to watch, Completed, Dropped)
+in a **single non-wrapping row that scrolls horizontally** (scrollbar hidden). The sort + view
+controls sit right-aligned (`margin-left:auto`) and wrap onto their own row on narrow screens. Sort
+dropdown (Recently watched / Title A–Z / Progress), grid/list toggle. Grid card: status pill
 with dot top-left, ⋯, `watched / total` pill, progress bar in status color. List row:
 44px poster, title, year · episodes, status, progress bar + count, "Watched ago", ⋯ (mobile
 collapses to poster/title/⋯). Context menu: Continue/Play/Watch again, Go to anime, Move to
@@ -394,12 +427,19 @@ Loading skeletons (same grid geometry), playback error in the player, empty home
 ## Assets
 
 No image assets. Fonts: Google Fonts (Sora, JetBrains Mono). Icons are inline SVG paths in the
-file (nav icons in `NAV`, menu icons in `IC`, player controls inline) — swap for the app's icon
-set if it has one, keeping 1.7–1.8 stroke and round caps. Google "G" logo is the official
+file (nav icons in `NAV`, menu icons in `IC`, player controls inline). **All icons are rounded**:
+every stroked icon uses `stroke-linecap="round"` and `stroke-linejoin="round"` (1.7–2.2 stroke),
+rectangular shapes have rounded corners, and filled glyphs (play, next, pause) use rounded
+triangles/rects. Text glyphs (▶ ❚❚ ✓ ←) are not used. If swapping for an icon set, use a rounded
+one (e.g. Lucide). Google "G" logo is the official
 4-color mark. Posters/thumbnails are placeholders for AniList covers.
 
 ## Files
 
-- `Anime Streaming v3.dc.html` — the prototype (all screens). Open in a browser.
+- `Anime Streaming v3.dc.html` — the prototype (all screens, desktop + mobile). Open in a browser.
+  Accepts `?screen=signin|welcome|home|search|library|releases|anime|player|download|import|settings`
+  to open a screen directly, and `&drawer=1` to open the episodes popup on the player.
+- `Anime Streaming Phone.dc.html` — phone board: every screen live at 390×844, plus the
+  landscape player (844×390, playing + episodes sheet). Embeds the v3 file, so keep both together.
 - `support.js` — prototype runtime only; required to open the file, not part of the deliverable.
 - `data-sources.md` — what ani-cli can and cannot provide and why AniList is needed.
