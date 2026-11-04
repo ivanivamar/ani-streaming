@@ -1,6 +1,6 @@
 # ani.stream — revival plan (rev. 3, Nov 3, 2026)
 
-**Status: Steps 0–6 done, Step 7 written (Nov 4, 2026); next Step 8.** Replaces the allanime / ani-cli approach (blocked by
+**Status: Steps 0–7 done (Nov 4, 2026); next Step 8.** Replaces the allanime / ani-cli approach (blocked by
 purpose-built anti-scraping, see `claude/known-issue-api-sources-cloudflare.md`) with a library
 Ivan owns: his own episodes, compressed with ffmpeg, stored on Google Drive, streamed with range
 requests. Same model as the music app (Material Music).
@@ -494,7 +494,7 @@ can't answer the streaming service worker's token request) and passed as `subCon
 - `firebase.yml` workflow ported: on push to `main` → lint, test, build → deploy Hosting, rules
   and the function when it changed. Secret `FIREBASE_SERVICE_ACCOUNT`.
 
-### Result (Nov 4 — written, not yet run on GitHub)
+### Result (Nov 4) — done
 
 - **firebase.json** (already ported in Step 3, SPA rewrite + cache headers): Hosting `predeploy`
   removed (CI deploys the build it tested; `npm run deploy` / `deploy:hosting` now build first).
@@ -520,7 +520,9 @@ can't answer the streaming service worker's token request) and passed as `subCon
   rules-tests typecheck. Update flow tested in Chromium against two builds: no prompt on first
   load → `reg.update()` after the switch → toast → Reload → page runs the new build, toast gone;
   manifest served with 3 icons.
-- **To do on GitHub / Google Cloud** (README "Deploying"): create the `github-deploy` service
+- **Confirmed by Ivan (Nov 4):** the GitHub Action completed (first deploy from `main`) and
+  episodes play on the hosted web app.
+- Setup that was needed (README "Deploying"): create the `github-deploy` service
   account with the listed roles, add its JSON key as `FIREBASE_SERVICE_ACCOUNT`, merge
   `revive-drive` into `main` (first deploy), check the Actions run. Watch: the `rules` job is the
   first real run of the emulator tests in CI.
