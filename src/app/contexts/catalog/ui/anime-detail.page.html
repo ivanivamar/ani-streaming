@@ -68,6 +68,16 @@
               + Add to favourites
             }
           </button>
+          @if (downloads.available && tiles().length) {
+            <button
+              type="button"
+              class="btn btn-outline dl-season"
+              [attr.aria-pressed]="seasonDownload().all"
+              (click)="toggleSeasonDownload(d)"
+            >
+              <app-icon [name]="seasonDownload().all ? 'check' : 'download'" [size]="15" />{{ seasonDownload().label }}
+            </button>
+          }
         </div>
       </div>
     </div>
@@ -120,6 +130,11 @@
               <span class="badge up"><app-icon name="play-fill" [size]="9" />{{ t.fraction > 0 ? pct(t.fraction) : 'UP NEXT' }}</span>
             } @else if (t.watched) {
               <span class="badge"><app-icon name="check" [size]="10" [stroke]="2.6" />WATCHED</span>
+            }
+            @if (t.offline) {
+              <span class="offline" [class.ready]="t.offline === 'done'" [title]="t.offline === 'done' ? 'Downloaded' : 'Downloading'">
+                <app-icon name="download" [size]="11" [stroke]="2.4" />
+              </span>
             }
             @if (t.fraction > 0 && !t.watched) {
               <div class="prog"><i [style.width.%]="t.fraction * 100"></i></div>

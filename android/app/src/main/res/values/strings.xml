@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ani.stream</string>
+    <string name="title_activity_main">ani.stream</string>
+    <string name="package_name">com.ivan.anistream</string>
+    <string name="custom_url_scheme">com.ivan.anistream</string>
+</resources>

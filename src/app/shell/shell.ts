@@ -1,6 +1,7 @@
 import { afterNextRender, Component, DestroyRef, ElementRef, inject, Injector, signal, viewChild } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { SessionStore } from '@identity/application';
+import { DownloadsStore } from '@playback/application';
 import { Avatar, ContextMenuHost, Icon, Logo, Motion, Viewport, type IconName } from '@shared/ui';
 import { filter } from 'rxjs';
 import { HeaderSearch } from './header-search';
@@ -13,7 +14,9 @@ interface NavItem {
   readonly icon: IconName;
 }
 
-/** Downloads (Android only, Step 8) isn't on the web nav. */
+/** Downloads (Android only, Step 8): profile menu on phones, sidebar on tablets; not on the web. */
+const DOWNLOADS: NavItem = { path: '/downloads', label: 'Downloads', short: 'Downloads', icon: 'download' };
+
 const NAV: readonly NavItem[] = [
   { path: '/', label: 'Home', short: 'Home', icon: 'home' },
   { path: '/library', label: 'Library', short: 'Library', icon: 'library' },
@@ -130,6 +133,11 @@ const readRailed = (): boolean => {
           </div>
         </div>
         <div class="p-div"></div>
+        @if (downloads.available) {
+          <a routerLink="/downloads" role="menuitem" class="p-item" (click)="profileOpen.set(false)">
+            <app-icon name="download" [size]="17" class="p-icon" />Downloads
+          </a>
+        }
         <a routerLink="/settings" role="menuitem" class="p-item" (click)="profileOpen.set(false)">
           <app-icon name="settings" [size]="17" class="p-icon" />Settings
         </a>
@@ -154,8 +162,10 @@ export class Shell {
   private readonly scroll = viewChild.required<ElementRef<HTMLElement>>('scroll');
   private readonly chrome = viewChild.required<ElementRef<HTMLElement>>('chrome');
 
+  protected readonly downloads = inject(DownloadsStore);
   protected readonly nav = NAV;
-  protected readonly desktopNav = DESKTOP_NAV;
+  /** Android tablets get Downloads instead of Import (the importer runs on the PC) */
+  protected readonly desktopNav = this.downloads.available ? [...NAV, DOWNLOADS] : DESKTOP_NAV;
   protected readonly railed = signal(readRailed());
   protected readonly profileOpen = signal(false);
   protected readonly account = this.session.account;

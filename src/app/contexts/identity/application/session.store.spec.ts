@@ -7,6 +7,7 @@ import {
   FirebaseSessionPort,
   GoogleIdentityPort,
   GoogleProfilePort,
+  NativeAuthPort,
   SessionPersistencePort,
   type GoogleTokens,
 } from './ports';
@@ -50,6 +51,13 @@ class FakeFirebase extends FirebaseSessionPort {
   });
   disconnect = vi.fn(async () => undefined);
 }
+class FakeNative extends NativeAuthPort {
+  available = false;
+  n = 0;
+  authorize = vi.fn(async () => tokens(`native-${++this.n}`));
+  clearToken = vi.fn(async () => undefined);
+  share = vi.fn();
+}
 class FakeAccess extends AccessPort {
   allowed = true;
   isAllowed = vi.fn(async () => this.allowed);
@@ -63,6 +71,7 @@ function setup(stored: StoredSession | null = null) {
     persistence: new MemoryPersistence(),
     firebase: new FakeFirebase(),
     access: new FakeAccess(),
+    native: new FakeNative(),
   };
   fakes.persistence.value = stored;
   TestBed.configureTestingModule({
@@ -73,6 +82,7 @@ function setup(stored: StoredSession | null = null) {
       { provide: SessionPersistencePort, useValue: fakes.persistence },
       { provide: FirebaseSessionPort, useValue: fakes.firebase },
       { provide: AccessPort, useValue: fakes.access },
+      { provide: NativeAuthPort, useValue: fakes.native },
     ],
   });
   return { ...fakes, create: () => TestBed.inject(SessionStore) };
@@ -96,6 +106,46 @@ describe('SessionStore', () => {
     expect(session.ready()).toBe(true);
     expect(t.persistence.value).toMatchObject({ token: 'helper-token', renew: 'server', account: ivan });
     expect(t.firebase.connect).toHaveBeenCalledWith('ivan@example.com', expect.any(Function));
+  });
+
+  it('Android: signs in through Play services and shares the token with the native side', async () => {
+    const t = setup();
+    t.native.available = true;
+    const session = t.create();
+    session.preload();
+    expect(t.google.preload).not.toHaveBeenCalled();
+
+    await expect(session.signIn()).resolves.toBe('ready');
+
+    expect(t.native.authorize).toHaveBeenCalledWith(true);
+    expect(t.google.requestCode).not.toHaveBeenCalled();
+    expect(t.helper.exchange).not.toHaveBeenCalled();
+    expect(t.persistence.value).toMatchObject({ token: 'native-1', renew: 'native', account: ivan });
+    expect(t.native.share).toHaveBeenLastCalledWith('native-1', expect.any(Number), 'ivan@example.com');
+  });
+
+  it('Android: renews silently through Play services, dropping the old token first', async () => {
+    const t = setup();
+    t.native.available = true;
+    const session = t.create();
+    await session.signIn();
+
+    await expect(session.refresh()).resolves.toBe(true);
+
+    expect(t.native.clearToken).toHaveBeenCalledWith('native-1');
+    expect(t.native.authorize).toHaveBeenLastCalledWith(false);
+    expect(session.token()).toBe('native-2');
+    expect(t.helper.refresh).not.toHaveBeenCalled();
+  });
+
+  it('Android: sign-out clears the native token and tells the native side', async () => {
+    const t = setup();
+    t.native.available = true;
+    const session = t.create();
+    await session.signIn();
+    session.signOut();
+    expect(t.native.clearToken).toHaveBeenCalledWith('native-1');
+    expect(t.native.share).toHaveBeenLastCalledWith(null, 0, null);
   });
 
   it('falls back to the hourly token model without the helper', async () => {

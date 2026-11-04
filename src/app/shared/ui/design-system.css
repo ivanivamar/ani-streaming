@@ -553,3 +553,10 @@ button {
   border-top-color: #1f1f1f;
   animation: spin 0.8s linear infinite;
 }
+
+/* Android player (PLAN.md Step 8): the video is a native Media3 surface under the WebView, so the
+   page is see-through while it plays (playback/ui NativeVideo adds the class). */
+html.native-video,
+html.native-video body {
+  background: transparent !important;
+}

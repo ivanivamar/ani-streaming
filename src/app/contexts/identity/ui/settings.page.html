@@ -64,7 +64,7 @@
       <div class="row">
         <div class="text">
           <div class="label">Video decoding</div>
-          <div class="desc">{{ (decode.hasValue() ? decode.value().advice : null) ?? 'Episodes are HEVC 10-bit. This browser decodes them on the GPU.' }}</div>
+          <div class="desc">{{ (decode.hasValue() ? decode.value().advice : null) ?? (downloads.available ? 'Episodes are HEVC 10-bit. This phone decodes them in hardware.' : 'Episodes are HEVC 10-bit. This browser decodes them on the GPU.') }}</div>
         </div>
         <span class="decode-chip" [attr.data-support]="decode.hasValue() ? decode.value().support : 'unknown'">{{ decodeLine() }}</span>
       </div>
@@ -73,6 +73,67 @@
       <div class="notice-error" role="alert">Couldn't save: {{ e }}</div>
     }
   </section>
+
+  @if (downloads.available) {
+    <section>
+      <div class="sec-head">
+        <h2>Downloads</h2>
+        <p>Episodes saved on this phone for offline viewing, with their subtitles and fonts.</p>
+      </div>
+      <div class="settings-group">
+        <div class="row">
+          <div class="text">
+            <div class="label">Download over Wi-Fi only</div>
+            <div class="desc">{{ downloads.state().wifiOnly ? 'Downloads wait for Wi-Fi.' : 'Downloads also use mobile data.' }}</div>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" [attr.aria-pressed]="downloads.state().wifiOnly" (click)="downloads.setWifiOnly(!downloads.state().wifiOnly)">
+            {{ downloads.state().wifiOnly ? 'Wi-Fi only' : 'Wi-Fi + mobile' }}
+          </button>
+        </div>
+        <div class="row">
+          <div class="text">
+            <div class="label">Storage</div>
+            <div class="desc">{{ downloads.doneCount() }} episodes · {{ bytes(downloads.state().used) }} used · {{ bytes(downloads.state().free) }} free</div>
+          </div>
+          <a routerLink="/downloads" class="btn btn-outline btn-sm">Manage</a>
+        </div>
+        <div class="row">
+          <div class="text">
+            <div class="label danger-text">Remove all downloads</div>
+            <div class="desc">Frees the space. Episodes still stream from Drive.</div>
+          </div>
+          <button type="button" class="btn btn-sm danger" [class.armed]="armed() === 'downloads'" [disabled]="busy() === 'downloads' || !downloads.count()" (click)="destructive('downloads')">
+            {{ armed() === 'downloads' ? 'Tap again to confirm' : busy() === 'downloads' ? 'Removing…' : 'Remove all' }}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head">
+        <h2>App</h2>
+        <p>New versions are published on GitHub by the Android build workflow.</p>
+      </div>
+      <div class="settings-group">
+        <div class="row">
+          <div class="text">
+            <div class="label">Version</div>
+            <div class="desc">
+              {{ apk?.current()?.versionName ?? '…' }}
+              @if (apk?.available(); as r) {
+                · {{ r.versionName }} is available
+              }
+            </div>
+          </div>
+          @if (apk?.available()) {
+            <button type="button" class="btn btn-primary btn-sm" (click)="apk.install()">Install</button>
+          } @else {
+            <button type="button" class="btn btn-outline btn-sm" [disabled]="checking()" (click)="checkUpdate()">{{ checking() ? 'Checking…' : 'Check for updates' }}</button>
+          }
+        </div>
+      </div>
+    </section>
+  }
 
   <section>
     <div class="sec-head">

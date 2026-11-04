@@ -9,7 +9,8 @@
  */
 
 export type DecodeSupport = 'hardware' | 'software' | 'unsupported' | 'unknown';
-export type BrowserName = 'edge' | 'chrome' | 'firefox' | 'safari' | 'other';
+/** `android` = the Android app (Media3 / MediaCodec, not the WebView). */
+export type BrowserName = 'edge' | 'chrome' | 'firefox' | 'safari' | 'android' | 'other';
 
 /** The video to check (an episode's `video` track, or a typical 1080p encode). */
 export interface DecodeTarget {
@@ -84,6 +85,7 @@ export const BROWSER_NAME: Record<BrowserName, string> = {
   chrome: 'Chrome',
   firefox: 'Firefox',
   safari: 'Safari',
+  android: 'This phone',
   other: 'This browser',
 };
 
@@ -92,6 +94,11 @@ export function decodeAdvice(support: DecodeSupport, browser: BrowserName, windo
   if (support === 'hardware') return null;
   if (support === 'unknown') {
     return `${BROWSER_NAME[browser]} didn't say whether it decodes ${label} on the GPU. Playback will be tried anyway.`;
+  }
+  if (browser === 'android') {
+    return support === 'software'
+      ? `This phone has no hardware decoder for ${label}, so the software one is used: it may stutter and drain the battery.`
+      : `This phone has no decoder for ${label}. Watch it on the PC, or re-import the series for older phones.`;
   }
   if (browser === 'edge' && windows) {
     return support === 'software'

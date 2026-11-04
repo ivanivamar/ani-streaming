@@ -1,6 +1,6 @@
 # ani.stream — revival plan (rev. 3, Nov 3, 2026)
 
-**Status: Steps 0–7 done (Nov 4, 2026); next Step 8.** Replaces the allanime / ani-cli approach (blocked by
+**Status: Steps 0–7 done (Nov 4, 2026); Step 8 written, waiting for the first APK build on the PC / CI.** Replaces the allanime / ani-cli approach (blocked by
 purpose-built anti-scraping, see `claude/known-issue-api-sources-cloudflare.md`) with a library
 Ivan owns: his own episodes, compressed with ffmpeg, stored on Google Drive, streamed with range
 requests. Same model as the music app (Material Music).
@@ -540,6 +540,64 @@ can't answer the streaming service worker's token request) and passed as `subCon
   GitHub Release with the APK; app checks Releases for updates. New keystore, secrets
   `ANI_KEYSTORE_BASE64` / `ANI_KEYSTORE_PASSWORD`.
 - **Check:** install APK, sign in, stream, seek, subs, progress syncs with web.
+
+### Result (Nov 4) — written, not built yet
+
+**Changed from the plan: no separate native player Activity, and libass runs as JASSUB, not in
+Media3.** Media3 plays under the WebView instead, and the existing web Watch page stays on top
+(transparent while a native video plays). Reasons: the v3 controls, CC menu, skip OP/ED (chapters
++ AniSkip), episodes popup, autoplay and `ProgressTracker` already exist and are tested; a native
+copy would duplicate all of it. The libass-for-Media3 library (`io.github.peerless2012:ass-media`)
+reaches into Media3 internals by reflection, is tied to one Media3 version and couldn't be checked
+from the sandbox (Maven blocked); JASSUB is the renderer already used on the web, and its canvas mode
+was checked in Chromium.
+
+- **Capacitor 8.5.2** (`@capacitor/core`, `@capacitor/app` 8.1.1, `@capacitor/android`, `@capacitor/cli`,
+  exact versions like the music app). `capacitor.config.ts`: app id `com.ivan.anistream`, web dir
+  `dist/ani-stream/browser`, SystemBars as in the music app. Scripts `android:sync`, `android:open`, `android:apk`.
+- **`android/`** (Capacitor template, Gradle 8.14.3, AGP 8.13, SDK 36, min 24, Java 21). Java package
+  `com.anistream` (the bridge can't write deeper than 7 folders; app id stays `com.ivan.anistream`).
+  Media3 1.5.1 (exoplayer + ui), play-services-auth 21.4.0, work-runtime 2.10.0. Signing like the music
+  app: `secrets/android-signing.properties` locally, `ANI_KEYSTORE_*` env vars in CI; debug builds use the
+  release key too. Icons: adaptive (mint dot on `#0A0B0D` + themed monochrome) + PNG fallbacks; splash = dot.
+- **Ported** (`DriveAuth` → drive.readonly + prefs `ani.auth`; `KnownLengthDataSource`; `Offline` +
+  `DownloadWorker` + `AniDownloadsPlugin` = PelagicDownloads renamed; `AniNativePlugin` = PelagicNative
+  + `setAuth`/`clearAuth` + `setImmersive` + `expiresInSec` from tokeninfo; `updates.ts` → `ApkUpdate`).
+- **New native**: `AniPlayerPlugin` (ExoPlayer, PlayerView at index 0 under the WebView, Drive/offline
+  resolver, 401 → fresh token + one retry, state events every 250 ms, pauses on app background,
+  `decoderInfo` from MediaCodecList); `DriveWebViewClient` (`/__drive/<id>` → downloaded file or Drive).
+- **Angular**: `shared/infrastructure/native.ts` (`IS_NATIVE`, plugin interfaces), providers pick native
+  adapters when `IS_NATIVE`:
+  - identity: `NativeAuthPort` (`PlayServicesAuth` / `NoNativeAuth`), `SessionStore` renew mode `native`
+    (sign-in, silent refresh, sign-out, token shared with native on every change); offline on Android a
+    failed renewal doesn't sign you out; Firebase keeps its persisted user when offline. `apiBase` =
+    `https://myanime-streaming.web.app/` in the APK (the function already sent CORS for https://localhost).
+  - playback domain: `NativePlayerPort`, `nativeSrc`/`parseNativeSrc`, `interpolatedPosition`;
+    `downloads.ts` (episode → files, `wantedFiles`, `entryProgress`), `OfflineStorePort`; `BrowserName`
+    gains `android` ("This phone").
+  - playback: `NativeVideo` (`<app-native-video>`: HTMLVideoElement API + media events on its host),
+    `NativeVideoSource`, `NativeDecoderProbe`, `NativeJassubRenderer` (canvas + `manualRender` per frame,
+    .ass/fonts via `/__drive/`), `CapacitorNativePlayer`, `CapacitorOfflineStore` (`ani.downloads.v1`),
+    `DownloadsStore`, Downloads page `/downloads`.
+  - UI: Watch hides the fullscreen button natively; anime page *Download season* + long-press
+    Download / Remove download + tile mark; profile menu (phone) / sidebar (tablet) → Downloads;
+    Settings → Downloads (Wi-Fi only, storage, remove all) and App (version, check / install);
+    update toast offers the APK in the app; Android Back handled (`provideNativeShell`).
+  - `formatBytes` in shared/kernel.
+- **`.github/workflows/android.yml`**: build web → `cap sync android` → `assembleRelease
+  -PversionCode=<run>` → Release `android-<run>` with `ani-stream.apk`; PRs touching `android/` build
+  without publishing (APK as artifact). actionlint clean. Written to `Claude outputs/android.yml`
+  (the bridge can't write `.github/`).
+- Cloud checks: lint clean, 104 tests (17 new: native sign-in, downloads rules + store, NativeVideo,
+  APK release pick, formatBytes), production build, `cap sync android` (generated files match the
+  committed ones), JASSUB canvas mode rendered in Chromium (dialogue + positioned sign). Java: syntax
+  only (`javac` without the Android SDK). **Not done: a Gradle build** — Maven Central, Google Maven
+  and Gradle downloads are blocked from the sandbox, so the first compile happens in Android Studio or CI.
+- Known gaps: Settings → Export JSON uses a download link, which the WebView ignores (use the web app);
+  in-app update check needs a public repo.
+- **Check (Ivan):** README "Android app" one-time setup (keystore, Android OAuth client with the SHA-1,
+  two GitHub secrets, move the workflow), then install the APK: sign in, stream, seek, CC (full/signs),
+  skip OP, progress shows on the web, download an episode and play it in flight mode.
 
 ## Order and dependencies
 Step 0 → **1 (needs Ivan's viewing decision)** → 2 → 3 → 4/5/6 in parallel → 7 → 8.

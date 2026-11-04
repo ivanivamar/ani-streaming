@@ -31,6 +31,7 @@ src/app/
     releases/   airing schedule, premieres, notifications
     identity/   Google sign-in, Drive token, profile, prefs, access allowlist
     importing/  Import page ↔ the import agent on the PC (Firestore importAgent/importScan/importJobs)
+                (playback also holds the Android player + Downloads, Step 8)
       domain/          pure TS: entities, value objects, rules, ports
       application/     use cases / signal stores — the context's public API (index.ts)
       infrastructure/  Firestore / Drive / AniList adapters implementing the ports
@@ -38,12 +39,14 @@ src/app/
   shared/
     ui/              design system
     kernel/          cross-context types and pure utils (ids, Result, formatDuration)
-    infrastructure/  Firebase providers, Drive HTTP client
+    infrastructure/  Firebase providers, Drive HTTP client, update checks, Android bridge (native.ts)
   shell/           app shell (nav, background, header search)
   app.ts, app.config.ts, app.routes.ts
 packages/contracts/  Firestore document types + id helpers
 tools/import/        importer (Step 1+)
 tools/rules-tests/   firestore.rules tests against the emulator (Step 6)
+android/             Capacitor 8 Android project (Step 8): native plugins in app/src/main/java/com/anistream
+capacitor.config.ts  app id com.ivan.anistream, web build = dist/ani-stream/browser
 ```
 
 Path aliases: `@catalog/*`, `@playback/*`, `@library/*`, `@releases/*`, `@identity/*`, `@importing/*`,
@@ -76,6 +79,9 @@ npm run functions:test   # sign-in helper tests (after npm --prefix firebase/fun
 npm run deploy       # build, then firebase deploy (everything; Functions bundles first)
 npm run deploy:hosting   # build, then deploy Hosting only
 npm run agent -w @ani/import   # import agent for the app's Import page (leave it running on the PC)
+npm run android:sync # build, then copy it into the Android project (npx cap sync android)
+npm run android:open # open android/ in Android Studio
+npm run android:apk  # sync + signed release APK → android/app/build/outputs/apk/release/
 ```
 
 ## Firestore rules and indexes
@@ -144,6 +150,66 @@ build; × hides it until the next deploy (the new build then starts once every t
 (Chrome/Edge: install icon in the address bar; Android: *Add to Home screen*; iOS Safari: *Share →
 Add to Home Screen*).
 
+## Android app (Step 8)
+
+The APK is the same Angular build inside Capacitor 8 (served from `https://localhost`, so the UI
+works offline). Three native plugins do what a WebView can't
+(`android/app/src/main/java/com/anistream/`, ported from the music app where they existed):
+
+| Plugin | Does | Web side |
+| --- | --- | --- |
+| `AniNative` | Google sign-in through Play services (drive.readonly, renews silently), app version, open URL, immersive mode | identity `PlayServicesAuth` |
+| `AniPlayer` | Media3 ExoPlayer on a PlayerView **under** the transparent WebView: Drive stream with the OAuth header (or the downloaded copy), MediaCodec decode check | playback `CapacitorNativePlayer` → `<app-native-video>` |
+| `AniDownloads` | WorkManager downloads into the app's storage (Wi-Fi only by default, notification, resumes) | playback `CapacitorOfflineStore` → `DownloadsStore` |
+
+`DriveWebViewClient` answers `/__drive/<id>` inside the APK (same URL scheme as the web
+service worker) for thumbnails, `.ass` files and fonts: downloaded copy first, else Drive.
+
+The watch page is the web one: same controls, CC menu, skip OP/ED, episodes popup, progress
+tracking. Only its `<video>` is swapped for `NativeVideo`, which drives the native player and
+offers the same API and events; JASSUB draws the subtitles on its own canvas from the native
+playback time. The player is always full screen (system bars hidden).
+
+**Downloads**: anime page → *Download season*, or long-press an episode → *Download*. Each
+episode saves its MP4, subtitle files, thumbnail and the series' fonts. *Profile → Downloads*
+lists them (progress, remove, pause, Wi-Fi only); *Settings → Downloads* has storage and
+*Remove all*. Offline, the app opens from Firestore's cache and plays downloaded episodes.
+
+**Updates**: [`.github/workflows/android.yml`](.github/workflows/android.yml) builds a signed APK on
+every push to `main` that touches the app and publishes it as GitHub Release `android-<run>`
+(`ani-stream.apk`). The app checks Releases on launch / every 6 h and shows "New app version ·
+Install" (Settings → App too). The check uses GitHub's public API, so it only finds releases
+while the repo is **public**; with a private repo, download the APK from the Release page.
+
+**One-time setup**
+
+1. Release key (keep it: every update must be signed with it), in `cmd` from the repo root:
+   ```
+   mkdir secrets
+   keytool -genkeypair -v -keystore secrets\ani-release.jks -alias anistream -keyalg RSA -keysize 2048 -validity 10000
+   ```
+   Use one password for store and key. Then `secrets\android-signing.properties`:
+   ```
+   storeFile=ani-release.jks
+   storePassword=<password>
+   keyAlias=anistream
+   keyPassword=<password>
+   ```
+2. Its SHA-1: `keytool -list -v -keystore secrets\ani-release.jks -alias anistream`.
+   Google Cloud (`myanime-streaming`) → *APIs & Services → Credentials → Create credentials →
+   OAuth client ID → Android*: name "ani.stream Android", package `com.ivan.anistream`, that SHA-1.
+   (Same project as the Web client, so `/api/firebase/token` accepts its tokens.)
+3. GitHub → *Settings → Secrets and variables → Actions*:
+   `ANI_KEYSTORE_BASE64` = `certutil -encodehex -f secrets\ani-release.jks secrets\ani-release.b64 0x40000001`
+   then the content of `ani-release.b64` (delete the file after); `ANI_KEYSTORE_PASSWORD` = the password.
+4. Push to `main` (or *Actions → Android APK → Run workflow*), open the Release on the phone,
+   install the APK (allow installs from the browser once).
+
+**Building on the PC** (Android Studio with JDK 21 and SDK 36): `npm run android:sync` (web build
++ copy into `android/`), then `npm run android:open` → Run, or `cd android && gradlew assembleDebug`.
+Debug builds are signed with the release key too (when `secrets/android-signing.properties`
+exists), so Google sign-in works on them.
+
 ## How sign-in and streaming work
 
 1. **Google** (Identity Services popup, scope `drive.readonly`). When the `api` function is reachable,
@@ -155,6 +221,9 @@ Add to Home Screen*).
 3. **Allowlist**: the app reads `config/access`; rules only let listed uids read it and the catalogue.
 4. **Streaming**: `public/sw.js` proxies `<video>` range requests to Drive with the page's token.
    It also caches the app shell (filled in by `scripts/build-sw.mjs`).
+5. **Android**: steps 1 and 4 are native instead (Play services token, ExoPlayer); the token is
+   handed to the native side on every renewal (`AniNative.setAuth`), which also renews it by itself
+   for downloads while the app is closed. Steps 2–3 are the same (the function on Hosting).
 
 ## Step 3 setup (once)
 

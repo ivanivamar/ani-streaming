@@ -1,4 +1,4 @@
-import { formatDuration, parseEpisodeId, toEpisodeId, toSeasonId, toSeriesId } from './index';
+import { formatBytes, formatDuration, parseEpisodeId, toEpisodeId, toSeasonId, toSeriesId } from './index';
 
 describe('ids', () => {
   it('builds series slugs', () => {
@@ -44,5 +44,16 @@ describe('relative time', () => {
     expect(formatCountdown(now + 2 * 86_400_000 + 4 * 3_600_000, now)).toBe('in 2d 4h');
     expect(formatMinutesLeft(600, 1440)).toBe('14 min left');
     expect(epLabel(7)).toBe('E07');
+  });
+});
+
+describe('formatBytes', () => {
+  it('uses binary units and one decimal from GB under 10', () => {
+    expect(formatBytes(0)).toBe('0 B');
+    expect(formatBytes(512)).toBe('512 B');
+    expect(formatBytes(655_360)).toBe('640 KB');
+    expect(formatBytes(312_475_648)).toBe('298 MB');
+    expect(formatBytes(1.4 * 1024 ** 3)).toBe('1.4 GB');
+    expect(formatBytes(12 * 1024 ** 3)).toBe('12 GB');
   });
 });

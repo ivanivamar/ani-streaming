@@ -10,7 +10,7 @@ import { provideImporting } from '@importing/infrastructure';
 import { provideLibrary } from '@library/infrastructure';
 import { provideReleases } from '@releases/infrastructure';
 import { providePlayback } from '@playback/infrastructure';
-import { APP_ENV } from '@shared/infrastructure';
+import { APP_ENV, IS_NATIVE, NATIVE_API_BASE, provideNativeShell } from '@shared/infrastructure';
 
 import { APP_ENV_VALUES } from './app.env';
 import { routes } from './app.routes';
@@ -29,7 +29,9 @@ export const appConfig: ApplicationConfig = {
       withInMemoryScrolling({ scrollPositionRestoration: 'top' }),
       withPreloading(PreloadAllModules),
     ),
-    { provide: APP_ENV, useValue: APP_ENV_VALUES },
+    // Android app: pages come from https://localhost, the sign-in function from Hosting
+    { provide: APP_ENV, useValue: IS_NATIVE ? { ...APP_ENV_VALUES, apiBase: NATIVE_API_BASE } : APP_ENV_VALUES },
+    provideNativeShell(),
     provideIdentity(),
     provideCatalog(),
     providePlayback(),

@@ -21,6 +21,7 @@ import {
   FirebaseSessionPort,
   GoogleIdentityPort,
   GoogleProfilePort,
+  NativeAuthPort,
   SessionPersistencePort,
   type GoogleTokens,
 } from './ports';
@@ -42,7 +43,9 @@ const NEEDS_DRIVE =
  * Firebase Auth then keeps its own session. Then `config/access` decides whether this uid may use
  * the app (`phase` = `ready` or `no-access`).
  *
- * Android (Step 8) adds a `native` renew mode through Play services; nothing here changes.
+ * Android (Step 8): sign-in and renewal go through Play services (`NativeAuthPort`, renew mode
+ * `native`): no popup, no helper, no refresh token. Every new token is also handed to the native
+ * side (`share`), which streams, downloads and serves `/__drive/` with it.
  */
 @Service()
 export class SessionStore {
@@ -52,6 +55,8 @@ export class SessionStore {
   private readonly persistence = inject(SessionPersistencePort);
   private readonly firebase = inject(FirebaseSessionPort);
   private readonly access = inject(AccessPort);
+  private readonly native = inject(NativeAuthPort);
+  private readonly doc = inject(DOCUMENT);
 
   private stored: StoredSession | null = this.persistence.read();
 
@@ -85,11 +90,12 @@ export class SessionStore {
   private lastAttempt = 0;
 
   constructor() {
+    this.shareNative();
     this.armExpiry();
     this.renewIfNeeded();
     // Timers are throttled or frozen in background tabs; renew when the tab comes back or the
     // connection returns (an offline renewal attempt left the session expired).
-    const doc = inject(DOCUMENT);
+    const doc = this.doc;
     const win = doc.defaultView;
     const onVisible = () => doc.visibilityState === 'visible' && this.renewIfNeeded();
     const onOnline = () => this.renewIfNeeded();
@@ -123,10 +129,25 @@ export class SessionStore {
     return (await this.refresh()) ? this.token() : null;
   }
 
-  /** New token without UI (sign-in helper). False when the session can't renew or Google needs the user. */
+  /** New token without UI (helper / Play services). False when the session can't renew or Google needs the user. */
   refresh(): Promise<boolean> {
     const s = this.stored;
     if (!canRenew(s) || !s?.account) return Promise.resolve(false);
+    if (s.renew === 'native') {
+      this.refreshing ??= (async () => {
+        try {
+          // drop the cached (old or rejected) token so Play services mints a full-length one
+          if (s.token) await this.native.clearToken(s.token).catch(() => undefined);
+          await this.adopt(await this.native.authorize(false), false, 'native');
+          return true;
+        } catch {
+          return false;
+        } finally {
+          this.refreshing = null;
+        }
+      })();
+      return this.refreshing;
+    }
     this.refreshing ??= (async () => {
       try {
         const t = await this.helper.refresh();
@@ -149,7 +170,7 @@ export class SessionStore {
   expire(): void {
     if (!this.stored) return;
     if (canRenew(this.stored) && this._status() === 'signed-in') {
-      void this.refresh().then((ok) => ok || this.markExpired());
+      void this.refresh().then((ok) => ok || this.renewFailed());
       return;
     }
     this.markExpired();
@@ -159,6 +180,7 @@ export class SessionStore {
 
   /** Start loading Google's script (sign-in screen mount). */
   preload(): void {
+    if (this.native.available) return;
     this.google.preload();
     void this.helper.available();
   }
@@ -173,7 +195,17 @@ export class SessionStore {
     const hint = opts.switchAccount ? undefined : (this._account()?.email ?? undefined);
     const popup = { hint, selectAccount: !!opts.switchAccount };
     try {
-      if (await this.helper.available()) {
+      if (this.native.available) {
+        const old = this.stored?.token;
+        if (opts.switchAccount && old) {
+          // revoking makes Google ask again, which shows the account chooser
+          this.google.revoke(old);
+          await this.native.clearToken(old).catch(() => undefined);
+        }
+        const t = await this.native.authorize(true);
+        if (!hasScope(t.scope, DRIVE_READONLY_SCOPE)) throw new Error(NEEDS_DRIVE);
+        await this.adopt(t, true, 'native');
+      } else if (await this.helper.available()) {
         const code = await this.google.requestCode(popup);
         const t = await this.helper.exchange(code);
         if (!hasScope(t.scope, DRIVE_READONLY_SCOPE)) throw new Error(NEEDS_DRIVE);
@@ -197,6 +229,7 @@ export class SessionStore {
   signOut(): void {
     const token = this.stored?.token;
     if (token) this.google.revoke(token);
+    if (token && this.native.available) void this.native.clearToken(token).catch(() => undefined);
     // the helper revokes the refresh token and clears its cookie
     if (this.stored?.renew === 'server') void this.helper.logout().catch(() => undefined);
     this.store(null);
@@ -279,6 +312,16 @@ export class SessionStore {
     this._resets.update((n) => n + 1);
   }
 
+  /**
+   * A silent renewal didn't work. Android offline (watching downloads): stay signed in, the
+   * native side and Firestore's cache don't need a fresh token; renewal runs again when the
+   * connection is back. Otherwise the user has to sign in again.
+   */
+  private renewFailed(): void {
+    if (this.stored?.renew === 'native' && this.doc.defaultView?.navigator.onLine === false) return;
+    this.markExpired();
+  }
+
   private markExpired(): void {
     if (!this.stored) return;
     this.store({ ...this.stored, token: '', expiresAt: 0 });
@@ -289,6 +332,14 @@ export class SessionStore {
   private store(s: StoredSession | null): void {
     this.stored = s;
     this.persistence.write(s);
+    this.shareNative();
+  }
+
+  /** Android: the native side streams and downloads with the same token (and renews it while JS sleeps). */
+  private shareNative(): void {
+    if (!this.native.available) return;
+    const s = this.stored;
+    this.native.share(s?.token || null, s?.expiresAt ?? 0, s?.account?.email ?? null);
   }
 
   private armExpiry(): void {
@@ -299,7 +350,7 @@ export class SessionStore {
     if (delay === null) return;
     // tokens last an hour, well under setTimeout's ~24-day limit
     this.expiryTimer = setTimeout(() => {
-      if (canRenew(this.stored)) void this.refresh().then((ok) => ok || this.markExpired());
+      if (canRenew(this.stored)) void this.refresh().then((ok) => ok || this.renewFailed());
       else this.markExpired();
     }, delay);
   }
@@ -312,6 +363,6 @@ export class SessionStore {
     if (!needsRenewal(s, now)) return;
     if (this._status() === 'expired' && now - this.lastAttempt < 10_000) return;
     this.lastAttempt = now;
-    void this.refresh().then((ok) => ok || this.markExpired());
+    void this.refresh().then((ok) => ok || this.renewFailed());
   }
 }

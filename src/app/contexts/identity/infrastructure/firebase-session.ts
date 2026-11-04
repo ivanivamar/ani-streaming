@@ -23,7 +23,16 @@ export class CustomTokenFirebaseSession extends FirebaseSessionPort {
     await auth.authStateReady();
     let user = auth.currentUser;
     if (user) {
-      const claims = (await user.getIdTokenResult().catch(() => null))?.claims;
+      let offline = false;
+      const claims = (
+        await user.getIdTokenResult().catch((e: unknown) => {
+          // offline (Android downloads, a dead connection): keep the persisted user, Firestore
+          // works from its cache and syncs later
+          offline = (e as { code?: string })?.code === 'auth/network-request-failed';
+          return null;
+        })
+      )?.claims;
+      if (offline) return user.uid;
       if (!claims || (email && claims['email'] !== email)) {
         await signOut(auth);
         user = null;

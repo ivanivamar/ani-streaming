@@ -276,3 +276,28 @@ a.genre:hover {
 .missing {
   color: var(--text-4);
 }
+
+/* Android: downloaded / downloading episode */
+.offline {
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.offline.ready {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.dl-season {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

@@ -1,0 +1,94 @@
+apply plugin: 'com.android.application'
+
+// Signing (PLAN.md Step 8): every build — debug and release — is signed with the one release key, so
+// the SHA-1 registered on the "ani.stream Android" OAuth client always matches and updates install in
+// place. Locally: <repo>/secrets/android-signing.properties (gitignored, README "Android app").
+// CI: env vars from the GitHub secrets (.github/workflows/android.yml).
+def signingProps = new Properties()
+def signingFile = rootProject.file('../secrets/android-signing.properties')
+if (signingFile.exists()) signingFile.withInputStream { signingProps.load(it) }
+def signingValue = { String key, String env -> System.getenv(env) ?: signingProps.getProperty(key) }
+// storeFile in the properties file is relative to that file's folder; the CI variable is an absolute path
+def keystoreFile = System.getenv('ANI_KEYSTORE_FILE') ? new File(System.getenv('ANI_KEYSTORE_FILE'))
+    : signingProps.getProperty('storeFile') ? new File(signingFile.parentFile, signingProps.getProperty('storeFile')) : null
+
+android {
+    // Java package stays short (com.anistream) so the sources sit at most 7 folders deep in the repo;
+    // the installed app id is com.ivan.anistream
+    namespace = "com.anistream"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.ivan.anistream"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        // CI passes -PversionCode=<run number>; local builds are 1
+        versionCode((project.findProperty('versionCode') ?: '1') as int)
+        versionName "1.0.${project.findProperty('versionCode') ?: '0'}"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+            // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        ani {
+            if (keystoreFile != null && keystoreFile.exists()) {
+                storeFile keystoreFile
+                storePassword signingValue('storePassword', 'ANI_KEYSTORE_PASSWORD')
+                keyAlias signingValue('keyAlias', 'ANI_KEY_ALIAS')
+                keyPassword signingValue('keyPassword', 'ANI_KEY_PASSWORD')
+            }
+        }
+    }
+    lint {
+        // Media3's @UnstableApi opt-ins are deliberate here; don't fail release builds on them
+        disable 'UnsafeOptInUsageError'
+        checkReleaseBuilds false
+    }
+    buildTypes {
+        debug {
+            if (keystoreFile != null && keystoreFile.exists()) signingConfig signingConfigs.ani
+        }
+        release {
+            if (keystoreFile != null && keystoreFile.exists()) signingConfig signingConfigs.ani
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir {
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    // Google sign-in for Drive (AuthorizationClient) — AniNativePlugin
+    implementation "com.google.android.gms:play-services-auth:21.4.0"
+    // Player: ExoPlayer + PlayerView under the WebView — AniPlayerPlugin
+    implementation "androidx.media3:media3-exoplayer:1.5.1"
+    implementation "androidx.media3:media3-ui:1.5.1"
+    // Offline downloads: background job with its own notification — DownloadWorker
+    implementation "androidx.work:work-runtime:2.10.0"
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

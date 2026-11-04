@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
-import { AppUpdate } from '@shared/infrastructure';
+import { ApkUpdate, AppUpdate, IS_NATIVE } from '@shared/infrastructure';
 import { Icon, Viewport } from '@shared/ui';
 import { filter, map } from 'rxjs';
 
@@ -9,6 +9,9 @@ import { filter, map } from 'rxjs';
  * "New version · Reload" toast (PLAN.md Step 7), shown on every page once a new deploy is
  * installed and waiting. Hidden in the player so it never covers the video; it shows again
  * after leaving it. Reload activates the new build; × hides it until the next deploy.
+ *
+ * Android app: the web build is inside the APK, so the toast offers a new APK instead
+ * ("New app version · Install", from GitHub Releases).
  */
 @Component({
   selector: 'app-update-prompt',
@@ -18,9 +21,14 @@ import { filter, map } from 'rxjs';
     @if (visible()) {
       <div class="update" role="status" aria-live="polite">
         <app-icon name="refresh" [size]="16" class="update-icon" />
-        <span class="update-text">New version</span>
-        <button type="button" class="btn btn-primary btn-sm" (click)="updates.reload()">Reload</button>
-        <button type="button" class="update-close" aria-label="Not now" (click)="updates.dismiss()">
+        @if (native) {
+          <span class="update-text">New app version {{ apk.available()?.versionName }}</span>
+          <button type="button" class="btn btn-primary btn-sm" (click)="apk.install()">Install</button>
+        } @else {
+          <span class="update-text">New version</span>
+          <button type="button" class="btn btn-primary btn-sm" (click)="updates.reload()">Reload</button>
+        }
+        <button type="button" class="update-close" aria-label="Not now" (click)="dismiss()">
           <app-icon name="close" [size]="14" />
         </button>
       </div>
@@ -79,6 +87,8 @@ import { filter, map } from 'rxjs';
 })
 export class UpdatePrompt {
   protected readonly updates = inject(AppUpdate);
+  protected readonly apk = inject(ApkUpdate);
+  protected readonly native = IS_NATIVE;
   protected readonly viewport = inject(Viewport);
   private readonly router = inject(Router);
 
@@ -90,9 +100,17 @@ export class UpdatePrompt {
     { initialValue: this.router.url },
   );
 
-  protected readonly visible = computed(() => this.updates.available() && !this.url().startsWith('/watch'));
+  protected readonly visible = computed(
+    () => (this.native ? !!this.apk.available() : this.updates.available()) && !this.url().startsWith('/watch'),
+  );
 
   constructor() {
-    void this.updates.start();
+    if (this.native) this.apk.start();
+    else void this.updates.start();
+  }
+
+  protected dismiss(): void {
+    if (this.native) this.apk.dismiss();
+    else this.updates.dismiss();
   }
 }

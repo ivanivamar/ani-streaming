@@ -1,23 +1,41 @@
 @let p = playable.value();
 
 @if (decodeBlocked() ? null : p?.src; as src) {
-  <video
-    #video
-    [src]="src"
-    preload="metadata"
-    playsinline
-    (loadedmetadata)="onLoaded()"
-    (timeupdate)="onTime()"
-    (progress)="onTime()"
-    (play)="onPlay()"
-    (pause)="onPause()"
-    (waiting)="waiting.set(true)"
-    (playing)="waiting.set(false)"
-    (canplay)="waiting.set(false)"
-    (seeked)="flush()"
-    (ended)="onEnded()"
-    (error)="onError()"
-  ></video>
+  @if (native) {
+    <app-native-video
+      #video
+      [src]="src"
+      (loadedmetadata)="onLoaded()"
+      (timeupdate)="onTime()"
+      (progress)="onTime()"
+      (play)="onPlay()"
+      (pause)="onPause()"
+      (waiting)="waiting.set(true)"
+      (playing)="waiting.set(false)"
+      (canplay)="waiting.set(false)"
+      (seeked)="flush()"
+      (ended)="onEnded()"
+      (error)="onError()"
+    />
+  } @else {
+    <video
+      #video
+      [src]="src"
+      preload="metadata"
+      playsinline
+      (loadedmetadata)="onLoaded()"
+      (timeupdate)="onTime()"
+      (progress)="onTime()"
+      (play)="onPlay()"
+      (pause)="onPause()"
+      (waiting)="waiting.set(true)"
+      (playing)="waiting.set(false)"
+      (canplay)="waiting.set(false)"
+      (seeked)="flush()"
+      (ended)="onEnded()"
+      (error)="onError()"
+    ></video>
+  }
 }
 <button type="button" class="surface" aria-label="Play / pause" (click)="togglePlay()" (dblclick)="toggleFs()"></button>
 
@@ -188,9 +206,11 @@
         <app-icon name="episodes" [size]="20" />
       </button>
     }
-    <button type="button" class="round" [title]="fs() ? 'Exit full screen (f)' : 'Full screen (f)'" [attr.aria-label]="fs() ? 'Exit full screen' : 'Full screen'" (click)="toggleFs()">
-      <app-icon [name]="fs() ? 'fullscreen-exit' : 'fullscreen'" [size]="18" [stroke]="1.8" />
-    </button>
+    @if (!native) {
+      <button type="button" class="round" [title]="fs() ? 'Exit full screen (f)' : 'Full screen (f)'" [attr.aria-label]="fs() ? 'Exit full screen' : 'Full screen'" (click)="toggleFs()">
+        <app-icon [name]="fs() ? 'fullscreen-exit' : 'fullscreen'" [size]="18" [stroke]="1.8" />
+      </button>
+    }
   </div>
 </div>
 

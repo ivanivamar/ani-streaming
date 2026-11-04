@@ -34,6 +34,7 @@ import {
 } from '@playback/application';
 import { formatDuration } from '@shared/kernel';
 import { Icon, Motion, thumbGradient, Viewport } from '@shared/ui';
+import { NativeVideo } from './native-video';
 
 const HIDE_AFTER_MS = 3000;
 const SKIP_SEC = 10;
@@ -58,16 +59,21 @@ interface PopupRow {
  * (`SubtitleRendererPort`) with the series' fonts. Before playing, the browser is asked whether
  * it decodes the episode's codec (HEVC 10-bit) on the GPU; if it can't at all, a card explains
  * what to install / switch on (Edge: HEVC Video Extensions) with a "Try anyway".
+ *
+ * Android app (Step 8): `<app-native-video>` replaces the `<video>`: Media3 plays under the
+ * transparent WebView, everything on this page stays the same. Always full screen there.
  */
 @Component({
   selector: 'app-watch-page',
-  imports: [Icon, NgTemplateOutlet],
+  imports: [Icon, NgTemplateOutlet, NativeVideo],
   templateUrl: './watch.page.html',
   styleUrl: './watch.page.css',
   host: {
     '[class.touch]': 'touchLayout()',
     '[class.landscape]': 'vp.landscapePhone()',
     '[class.idle]': 'idle()',
+    // Android app: the picture is Media3's surface under the WebView (inline: the CSS budget is full)
+    '[style.background]': "native ? 'transparent' : null",
     '(document:keydown)': 'onKey($event)',
     '(document:visibilitychange)': 'flush()',
     '(document:fullscreenchange)': 'fs.set(!!doc.fullscreenElement)',
@@ -96,7 +102,8 @@ export class WatchPage {
   readonly episodeId = input.required<string>();
   readonly t = input<string | undefined>();
 
-  private readonly videoRef = viewChild<ElementRef<HTMLVideoElement>>('video');
+  /** `<video>`, or the NativeVideo element (same API) in the Android app */
+  private readonly videoRef = viewChild<string, ElementRef<HTMLVideoElement>>('video', { read: ElementRef });
   private get video(): HTMLVideoElement | undefined {
     return this.videoRef()?.nativeElement;
   }
@@ -124,6 +131,8 @@ export class WatchPage {
   private tracker: ProgressTracker | null = null;
   private autoSkipped = new Set<string>();
 
+  /** Android app: native player, no fullscreen button (the player is always full screen) */
+  protected readonly native = this.playback.native;
   protected readonly touchLayout = computed(() => this.vp.touch() || this.vp.mobile());
   protected readonly ep = computed(() => this.playable.value()?.episode ?? null);
   protected readonly series = computed(() => this.playable.value()?.series ?? null);
@@ -382,6 +391,7 @@ export class WatchPage {
   }
 
   protected toggleFs(): void {
+    if (this.native) return;
     if (this.doc.fullscreenElement) void this.doc.exitFullscreen();
     else void this.host.requestFullscreen?.().catch(() => undefined);
   }

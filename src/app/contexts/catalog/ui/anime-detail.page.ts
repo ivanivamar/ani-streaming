@@ -3,7 +3,7 @@ import { Component, computed, inject, input, linkedSignal, resource } from '@ang
 import { Router, RouterLink } from '@angular/router';
 import { CatalogStore, seasonName, STATUS_NAME, type Episode, type SeriesDetail } from '@catalog/application';
 import { LibraryStore } from '@library/application';
-import { PlaybackStore } from '@playback/application';
+import { DownloadsStore, PlaybackStore, type DownloadStatus } from '@playback/application';
 import { formatDuration } from '@shared/kernel';
 import { ContextMenu, Icon, Motion, Pill, Poster, Stagger, thumbGradient } from '@shared/ui';
 
@@ -17,12 +17,17 @@ interface Tile {
   readonly gradient: string;
   readonly duration: string;
   readonly label: string;
+  /** Android: download status (null = not downloaded) */
+  readonly offline: DownloadStatus | null;
 }
 
 /**
  * Anime detail (v3): back, hero (poster, title, year • status, genres, synopsis, Play/Resume,
  * favourite), season pills, watched strip (one segment per episode) and the episode grid with
  * real thumbnails and durations from Firestore/Drive. Up next = accent ring + badge.
+ *
+ * Android app (Step 8): "Download season" in the hero, Download / Remove download in each
+ * episode's menu (long-press) and a small mark on downloaded tiles.
  */
 @Component({
   selector: 'app-anime-detail-page',
@@ -34,6 +39,7 @@ export class AnimeDetailPage {
   private readonly catalog = inject(CatalogStore);
   protected readonly library = inject(LibraryStore);
   private readonly playback = inject(PlaybackStore);
+  protected readonly downloads = inject(DownloadsStore);
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   private readonly menus = inject(ContextMenu);
@@ -82,8 +88,18 @@ export class AnimeDetailPage {
           gradient: thumbGradient(d.series.id, ep.number),
           duration: ep.durationSec ? formatDuration(ep.durationSec) : '',
           label: ep.title ? `Episode ${ep.number} · ${ep.title}` : `Episode ${ep.number}`,
+          offline: this.downloads.available ? (this.downloads.progressOf(d.series.id, ep.id)?.status ?? null) : null,
         };
       });
+  });
+
+  /** Android: the visible season's download state for the hero button */
+  protected readonly seasonDownload = computed(() => {
+    const tiles = this.tiles();
+    const picked = tiles.filter((t) => t.offline !== null);
+    const done = picked.filter((t) => t.offline === 'done').length;
+    if (!tiles.length || picked.length < tiles.length) return { label: `Download ${this.seasons().length > 1 ? 'season' : 'all'}`, all: false };
+    return { label: done === tiles.length ? 'Downloaded' : `Downloading ${done}/${tiles.length}`, all: true };
   });
 
   protected readonly watchedCount = computed(() => this.tiles().filter((t) => t.watched).length);
@@ -117,8 +133,25 @@ export class AnimeDetailPage {
     return t.watched ? 'var(--accent)' : t.fraction > 0 ? 'var(--accent-partial)' : 'rgba(255,255,255,0.1)';
   }
 
+  /** Android: pick the visible season's episodes for offline, or (all picked) remove them. */
+  protected toggleSeasonDownload(d: SeriesDetail): void {
+    const eps = this.tiles().map((t) => t.ep);
+    if (this.seasonDownload().all) {
+      for (const ep of eps) void this.downloads.remove(d.series.id, ep.id);
+      return;
+    }
+    void this.downloads.add(eps.map((episode) => ({ series: d.series, episode })));
+  }
+
   protected tileMenu(e: MouseEvent, d: SeriesDetail, t: Tile): void {
     const sid = d.series.id;
+    const offline = this.downloads.available
+      ? [
+          t.offline === null
+            ? { label: 'Download', icon: 'download' as const, separator: true, run: () => void this.downloads.add([{ series: d.series, episode: t.ep }]) }
+            : { label: 'Remove download', icon: 'remove' as const, separator: true, run: () => void this.downloads.remove(sid, t.ep.id) },
+        ]
+      : [];
     this.menus.open(e, `${d.series.title} · E${t.ep.number}`, [
       { label: t.fraction > 0 && !t.watched ? 'Resume' : 'Play', icon: 'play', run: () => this.router.navigate(this.watchLink(d, t.ep)) },
       {
@@ -142,6 +175,7 @@ export class AnimeDetailPage {
             d.series.episodeCount,
           ),
       },
+      ...offline,
     ]);
   }
 }

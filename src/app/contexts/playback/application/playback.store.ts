@@ -5,6 +5,7 @@ import {
   DecoderProbePort,
   EPISODE_MIME,
   missingSkipKinds,
+  NativePlayerPort,
   seasonAnilistId,
   skipSegments,
   SkipTimesPort,
@@ -20,7 +21,7 @@ export interface PlayableEpisode {
   readonly episode: Episode;
   /** the whole series (episodes popup, next episode) */
   readonly detail: SeriesDetail | null;
-  /** same-origin streaming URL, or null when the service worker isn't available */
+  /** same-origin streaming URL (Android: a `nativeSrc`), or null when the service worker isn't available */
   readonly src: string | null;
 }
 
@@ -31,6 +32,8 @@ export class PlaybackStore {
   private readonly source = inject(VideoSourcePort);
   private readonly skipTimes = inject(SkipTimesPort);
   private readonly decoder = inject(DecoderProbePort);
+  /** Android app: the video plays in the native player (the watch page swaps its `<video>`). */
+  readonly native = inject(NativePlayerPort, { optional: true })?.available ?? false;
 
   /** Episode thumbnail URL (through the streaming worker), or null to show the placeholder. */
   thumbUrl(driveFileId: string | null | undefined): string | null {

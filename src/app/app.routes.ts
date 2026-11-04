@@ -23,6 +23,7 @@ export const routes: Routes = [
       { path: 'library', loadChildren: () => import('@library/ui/library.routes') },
       { path: 'releases', loadChildren: () => import('@releases/ui/releases.routes') },
       { path: 'import', loadChildren: () => import('@importing/ui/importing.routes') },
+      { path: 'downloads', loadChildren: () => import('@playback/ui/downloads.routes') },
       {
         path: 'settings',
         loadChildren: () => import('@identity/ui/identity.routes').then((m) => m.identityShellRoutes),

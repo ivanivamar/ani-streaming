@@ -1,14 +1,15 @@
 import { Component, computed, effect, inject, linkedSignal, resource, signal, untracked } from '@angular/core';
 import { form, FormField } from '@angular/forms/signals';
-import { Router } from '@angular/router';
-import { PrefsStore, SessionStore, type Prefs, type WatchedThreshold } from '@identity/application';
+import { Router, RouterLink } from '@angular/router';
+import { AppReleasePort, PrefsStore, SessionStore, type Prefs, type WatchedThreshold } from '@identity/application';
 import { LibraryStore } from '@library/application';
-import { BROWSER_NAME, PlaybackStore, type DecodeSupport } from '@playback/application';
+import { BROWSER_NAME, DownloadsStore, PlaybackStore, type DecodeSupport } from '@playback/application';
 import { ReleasesStore } from '@releases/application';
+import { formatBytes } from '@shared/kernel';
 import { Avatar, GoogleG, Segmented, Toggle, type SegmentOption } from '@shared/ui';
 import { SUBTITLE_OPTIONS } from './prefs-options';
 
-type Armed = 'clear' | 'delete' | null;
+type Armed = 'clear' | 'delete' | 'downloads' | null;
 
 const DECODE_LABEL: Record<DecodeSupport, string> = {
   hardware: 'GPU',
@@ -25,13 +26,13 @@ const THRESHOLD_OPTIONS: readonly SegmentOption<WatchedThreshold>[] = [
 
 /**
  * Settings (v3 adapted): Account, Playback, Data. Playback prefs are a Signal Form saved to
- * `users/{uid}.prefs` on every change. The Downloads section exists only in the Android app
- * (Step 8). Destructive buttons need a second click. "Video decoding" shows whether this browser
+ * `users/{uid}.prefs` on every change. The Downloads and App sections exist only in the Android
+ * app (Step 8): Wi-Fi only, storage, remove all; installed version + update check. Destructive buttons need a second click. "Video decoding" shows whether this browser
  * decodes HEVC 10-bit on the GPU (the check to run in both Chrome and Edge).
  */
 @Component({
   selector: 'app-settings-page',
-  imports: [Avatar, FormField, GoogleG, Segmented, Toggle],
+  imports: [Avatar, FormField, GoogleG, RouterLink, Segmented, Toggle],
   templateUrl: './settings.page.html',
   styleUrl: './settings.page.css',
 })
@@ -42,6 +43,12 @@ export class SettingsPage {
   private readonly releases = inject(ReleasesStore);
   private readonly router = inject(Router);
   private readonly playback = inject(PlaybackStore);
+  /** Android app only (`available` is false in the browser) */
+  protected readonly downloads = inject(DownloadsStore);
+  /** bound in the app (ApkUpdate); absent in tests */
+  protected readonly apk = inject(AppReleasePort, { optional: true });
+  protected readonly bytes = formatBytes;
+  protected readonly checking = signal(false);
 
   protected readonly decode = resource({ loader: () => this.playback.decodeSupport() });
   protected readonly decodeLine = computed(() => {
@@ -123,7 +130,13 @@ export class SettingsPage {
     }
   }
 
-  protected async destructive(kind: 'clear' | 'delete'): Promise<void> {
+  protected async checkUpdate(): Promise<void> {
+    this.checking.set(true);
+    await this.apk?.check();
+    this.checking.set(false);
+  }
+
+  protected async destructive(kind: 'clear' | 'delete' | 'downloads'): Promise<void> {
     if (this.armed() !== kind) {
       this.armed.set(kind);
       clearTimeout(this.disarmTimer);
@@ -134,7 +147,9 @@ export class SettingsPage {
     this.busy.set(kind);
     this.dataError.set(null);
     try {
-      if (kind === 'clear') {
+      if (kind === 'downloads') {
+        await this.downloads.removeAll();
+      } else if (kind === 'clear') {
         const n = await this.library.clearHistory();
         this.done.set(n === 1 ? 'Watch history cleared (1 episode).' : `Watch history cleared (${n} episodes).`);
       } else {
@@ -142,7 +157,7 @@ export class SettingsPage {
         await this.router.navigateByUrl('/auth');
       }
     } catch (e) {
-      this.dataError.set(`${kind === 'clear' ? 'Clearing history' : 'Deleting data'} failed: ${e instanceof Error ? e.message : String(e)}`);
+      this.dataError.set(`${kind === 'clear' ? 'Clearing history' : kind === 'downloads' ? 'Removing downloads' : 'Deleting data'} failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       this.busy.set(null);
     }

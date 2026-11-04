@@ -1,3 +1,4 @@
+import type { Signal } from '@angular/core';
 import type { Account, StoredSession } from '../domain';
 import type { UserDoc, UserPrefs } from '../domain';
 
@@ -38,6 +39,25 @@ export class AuthHelperError extends Error {
     this.name = 'AuthHelperError';
     this.status = status;
   }
+}
+
+/**
+ * Android app (Step 8): Google's web OAuth flow doesn't run inside a WebView, so the APK asks
+ * Play services for the Drive token. Play services remembers the grant and mints a fresh token
+ * silently whenever asked, so these sessions renew without a refresh token or the helper.
+ * In the browser `available` is false and nothing else is called.
+ */
+export abstract class NativeAuthPort {
+  abstract readonly available: boolean;
+  /** `interactive: false` never shows UI and rejects when Google needs the user. */
+  abstract authorize(interactive: boolean): Promise<GoogleTokens>;
+  /** Forget a token in Play services' cache, so the next authorize() mints a new one. */
+  abstract clearToken(token: string): Promise<void>;
+  /**
+   * Hand the current token + account to the native side (player, downloads, `/__drive/`),
+   * null on sign-out. Fire-and-forget.
+   */
+  abstract share(token: string | null, expiresAt: number, email: string | null): void;
 }
 
 /** The sign-in helper function (`/api/auth/*`), which keeps the refresh token in a cookie. */
@@ -85,4 +105,15 @@ export abstract class UserProfilePort {
   abstract updatePrefs(uid: string, prefs: UserPrefs): Promise<void>;
   /** Deletes `users/{uid}` and everything under it (Settings → Delete account data). */
   abstract deleteAll(uid: string): Promise<void>;
+}
+
+/**
+ * Android app updates for Settings → App (GitHub Releases; bound to shared/infrastructure's
+ * ApkUpdate). Nothing is ever available in the browser.
+ */
+export abstract class AppReleasePort {
+  abstract readonly current: Signal<{ readonly versionName: string; readonly versionCode: number } | null>;
+  abstract readonly available: Signal<{ readonly versionName: string; readonly versionCode: number; readonly url: string } | null>;
+  abstract check(): Promise<void>;
+  abstract install(): void;
 }

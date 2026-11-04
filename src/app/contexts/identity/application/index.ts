@@ -9,11 +9,13 @@ export { PrefsStore } from './prefs.store';
 export { requireAccess, requireProfile } from './guards';
 export {
   AccessPort,
+  AppReleasePort,
   AuthHelperError,
   AuthHelperPort,
   FirebaseSessionPort,
   GoogleIdentityPort,
   GoogleProfilePort,
+  NativeAuthPort,
   SessionPersistencePort,
   UserProfilePort,
   type GoogleTokens,

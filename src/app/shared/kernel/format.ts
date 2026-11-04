@@ -38,3 +38,12 @@ export function formatMinutesLeft(positionSec: number, durationSec: number): str
 
 /** `"E07"` */
 export const epLabel = (n: number): string => `E${String(n).padStart(2, '0')}`;
+
+/** `"0 B"`, `"640 KB"`, `"298 MB"`, `"1.4 GB"` (powers of 1024, like Android's storage screen). */
+export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+  const v = bytes / 1024 ** i;
+  return `${v >= 10 || i < 3 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
+}
