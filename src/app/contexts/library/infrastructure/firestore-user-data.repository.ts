@@ -1,5 +1,5 @@
 import { inject, Injectable, Injector } from '@angular/core';
-import { collection, deleteDoc, doc, getDocs, setDoc, Timestamp, writeBatch } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, setDoc, Timestamp, writeBatch, type WriteBatch } from 'firebase/firestore';
 import {
   COLLECTIONS,
   toProgressId,
@@ -20,6 +20,9 @@ import {
   type UserData,
   type WatchProgress,
 } from '../domain';
+
+/** A batch holds at most 500 writes. */
+const BATCH = 450;
 
 const ms = (v: unknown): number => (v instanceof Timestamp ? v.toMillis() : typeof v === 'number' ? v : 0);
 const ts = (v: number) => Timestamp.fromMillis(v);
@@ -67,10 +70,10 @@ export class FirestoreUserDataRepository extends UserDataRepository {
   }
 
   async deleteProgress(uid: string, ids: readonly { seriesId: string; episodeId: string }[]): Promise<void> {
-    for (let i = 0; i < ids.length; i += 450) {
+    for (let i = 0; i < ids.length; i += BATCH) {
       const batch = writeBatch(this.db);
       ids
-        .slice(i, i + 450)
+        .slice(i, i + BATCH)
         .forEach((p) =>
           batch.delete(doc(this.col(uid, COLLECTIONS.progress), toProgressId(p.seriesId as SeriesId, p.episodeId as EpisodeId))),
         );
@@ -102,5 +105,21 @@ export class FirestoreUserDataRepository extends UserDataRepository {
     const batch = writeBatch(this.db);
     ids.forEach((id) => batch.delete(doc(this.col(uid, COLLECTIONS.recent), id)));
     await batch.commit();
+  }
+
+  async clearHistory(uid: string): Promise<number> {
+    const [progress, library] = await Promise.all([getDocs(this.col(uid, COLLECTIONS.progress)), getDocs(this.col(uid, COLLECTIONS.library))]);
+    const writes: ((b: WriteBatch) => void)[] = [
+      ...progress.docs.map((d) => (b: WriteBatch) => b.delete(d.ref)),
+      ...library.docs
+        .filter((d) => ((d.data() as LibraryEntryDoc).watched ?? 0) !== 0)
+        .map((d) => (b: WriteBatch) => b.update(d.ref, { watched: 0, updatedAt: Timestamp.now() })),
+    ];
+    for (let i = 0; i < writes.length; i += BATCH) {
+      const batch = writeBatch(this.db);
+      writes.slice(i, i + BATCH).forEach((w) => w(batch));
+      await batch.commit();
+    }
+    return progress.size;
   }
 }

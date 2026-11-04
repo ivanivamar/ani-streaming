@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { PrefsStore, SessionStore, type Prefs, type WatchedThreshold } from '@identity/application';
 import { LibraryStore } from '@library/application';
 import { BROWSER_NAME, PlaybackStore, type DecodeSupport } from '@playback/application';
+import { ReleasesStore } from '@releases/application';
 import { Avatar, GoogleG, Segmented, Toggle, type SegmentOption } from '@shared/ui';
 import { SUBTITLE_OPTIONS } from './prefs-options';
 
@@ -38,6 +39,7 @@ export class SettingsPage {
   protected readonly session = inject(SessionStore);
   private readonly prefs = inject(PrefsStore);
   private readonly library = inject(LibraryStore);
+  private readonly releases = inject(ReleasesStore);
   private readonly router = inject(Router);
   private readonly playback = inject(PlaybackStore);
 
@@ -60,6 +62,8 @@ export class SettingsPage {
   protected readonly busy = signal<Armed>(null);
   protected readonly saveError = signal<string | null>(null);
   protected readonly done = signal<string | null>(null);
+  /** Data section (export / clear / delete) failures */
+  protected readonly dataError = signal<string | null>(null);
   private disarmTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
@@ -84,19 +88,39 @@ export class SettingsPage {
     void this.router.navigateByUrl('/auth');
   }
 
-  protected exportData(): void {
-    const data = {
-      account: { email: this.account()?.email ?? null, name: this.account()?.name ?? null },
-      prefs: this.prefs.prefs(),
-      ...this.library.exportData(),
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ani-stream-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  protected readonly exporting = signal(false);
+
+  /**
+   * Export JSON: profile + prefs, library data and notify flags, read fresh from Firestore so the
+   * file has everything stored for this account (not only what this tab has loaded).
+   */
+  protected async exportData(): Promise<void> {
+    if (this.exporting()) return;
+    this.exporting.set(true);
+    this.dataError.set(null);
+    try {
+      const [library, notify] = await Promise.all([this.library.exportData(), this.releases.exportNotify()]);
+      const data = {
+        app: 'ani.stream',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        account: { uid: this.session.uid(), email: this.account()?.email ?? null, name: this.account()?.name ?? null },
+        prefs: this.prefs.prefs(),
+        ...library,
+        notify,
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ani-stream-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      this.dataError.set(`Export failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      this.exporting.set(false);
+    }
   }
 
   protected async destructive(kind: 'clear' | 'delete'): Promise<void> {
@@ -108,16 +132,17 @@ export class SettingsPage {
     }
     this.armed.set(null);
     this.busy.set(kind);
+    this.dataError.set(null);
     try {
       if (kind === 'clear') {
-        await this.library.clearHistory();
-        this.done.set('Watch history cleared.');
+        const n = await this.library.clearHistory();
+        this.done.set(n === 1 ? 'Watch history cleared (1 episode).' : `Watch history cleared (${n} episodes).`);
       } else {
         await this.prefs.deleteAccountData();
         await this.router.navigateByUrl('/auth');
       }
     } catch (e) {
-      this.saveError.set(e instanceof Error ? e.message : String(e));
+      this.dataError.set(`${kind === 'clear' ? 'Clearing history' : 'Deleting data'} failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       this.busy.set(null);
     }

@@ -1,6 +1,6 @@
 # ani.stream — revival plan (rev. 3, Nov 3, 2026)
 
-**Status: Steps 0–5 done (Nov 4, 2026); next Step 6.** Replaces the allanime / ani-cli approach (blocked by
+**Status: Steps 0–5 done, Step 6 written (Nov 4, 2026) — rules tests to run on the PC; next Step 7.** Replaces the allanime / ani-cli approach (blocked by
 purpose-built anti-scraping, see `claude/known-issue-api-sources-cloudflare.md`) with a library
 Ivan owns: his own episodes, compressed with ffmpeg, stored on Google Drive, streamed with range
 requests. Same model as the music app (Material Music).
@@ -455,6 +455,37 @@ can't answer the streaming service worker's token request) and passed as `subCon
 ## Step 6 — Firestore user data + rules
 - `library` context repositories for `users/{uid}/…`, export JSON / clear history / delete account.
 - `firestore.rules` + `firestore.indexes.json` in the repo; rules tested with the emulator.
+
+### Result (Nov 4)
+
+- Repositories were pulled forward in Step 4 (`FirestoreUserDataRepository`, `FirestoreUserProfile`,
+  `FirestoreNotifyRepository`). Step 6 changes:
+  - **Clear history** = `UserDataRepository.clearHistory(uid)`: queries `progress` (also docs this tab
+    never loaded), deletes them and sets `watched: 0` on library entries, 450 writes per batch.
+    Awaited and rejects on failure (before, errors were swallowed and Settings said "cleared");
+    memory cleared only after success. Settings shows the count.
+  - **Export JSON** reads fresh from Firestore (`LibraryStore.exportData()`, `ReleasesStore.exportNotify()`)
+    instead of the in-memory copy: `{ app, version: 1, exportedAt, account{uid,email,name}, prefs,
+    progress, library, favourites, recentSearches, notify }`, ISO dates. Button shows "Exporting…".
+  - **Delete account data** unchanged (identity: every `users/{uid}` sub-collection, then the doc,
+    then sign-out); now covered by a rules test. Data-section errors show under the Data section.
+- **Rules**: `users/{uid}/**` writes validated against the contracts — profile keys/types,
+  `createdAt` timestamp and immutable, prefs enums (`subtitles` full/signs/off, threshold
+  0.8/0.9/0.95); `progress` id `<slug>_sNNeNN`, `0 ≤ position ≤ duration + 5`, `0 < duration ≤ 24 h`;
+  `library.status` enum, `watched` int ≥ 0; `recent.term` 1–200 chars; `notify.title` 1–500, `ep`
+  int; all timestamps typed. Unknown sub-collections under a user denied. Rest unchanged.
+- **Indexes**: still no composite indexes; field overrides exclude never-queried nested fields
+  (episodes `video/audio/subs/chapters/source`, series `synopsis/fontFileIds`, importScan
+  `candidates/match`, importJobs `sources/labels/results`).
+- **Tests**: `tools/rules-tests` (`@ani/rules-tests`, `npm run test:rules`): `@firebase/rules-unit-testing`
+  6 + Vitest under `firebase emulators:exec` (project `demo-ani`, port 8085, emulator config in
+  `firebase.json`). 25 tests: allowlist, catalogue read-only, importState hidden, profile
+  create/update/shape, every user sub-collection's shape, cross-user access, a 450-delete batch
+  (the `get(config/access)` per write must stay under the rules call limit), delete-account flow,
+  Import page writes. `firebase-tools` is a devDependency so CI (Step 7) can run it.
+- Cloud checks: 82 app tests (3 new), lint clean, prod build, rules tests typecheck. **The rules
+  tests themselves have not run**: the sandbox can't download the emulator jar.
+- PC: install Java 21+, `npm install`, `npm run test:rules`; then `firebase deploy --only firestore`.
 
 ## Step 7 — Firebase Hosting + CI
 - `firebase.json` copied from the music app (cache headers, `/api/**` → function) + SPA rewrite;

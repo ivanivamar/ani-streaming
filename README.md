@@ -43,6 +43,7 @@ src/app/
   app.ts, app.config.ts, app.routes.ts
 packages/contracts/  Firestore document types + id helpers
 tools/import/        importer (Step 1+)
+tools/rules-tests/   firestore.rules tests against the emulator (Step 6)
 ```
 
 Path aliases: `@catalog/*`, `@playback/*`, `@library/*`, `@releases/*`, `@identity/*`, `@importing/*`,
@@ -65,15 +66,39 @@ Path aliases: `@catalog/*`, `@playback/*`, `@library/*`, `@releases/*`, `@identi
 ## Commands
 
 ```bash
-npm install          # workspaces: root app + packages/contracts + tools/import
+npm install          # workspaces: root app + packages/contracts + tools/import + tools/rules-tests
 npm start            # ng serve on http://localhost:4200 (/api proxied to the deployed site)
 npm run build        # production build → dist/ani-stream/browser (+ fills sw.js)
 npm test             # Vitest (ng test, single run); npm run test:watch to watch
 npm run lint         # ESLint + angular-eslint + layer boundaries
+npm run test:rules   # firestore.rules tests in the Firestore emulator (needs Java 21+)
 npm run functions:test   # sign-in helper tests (after npm --prefix firebase/functions install)
 npm run deploy       # firebase deploy (Hosting builds first, Functions bundles first)
 npm run agent -w @ani/import   # import agent for the app's Import page (leave it running on the PC)
 ```
+
+## Firestore rules and indexes
+
+`firestore.rules` is the only thing between the app and the database, so every change goes
+through `npm run test:rules` (`tools/rules-tests`): it starts the Firestore emulator for the
+offline project `demo-ani` (port 8085, nothing real is touched), runs the Vitest suite and stops
+it. The first run downloads the emulator jar (~60 MB). Java 21+ is required
+(`winget install EclipseAdoptium.Temurin.21.JDK`). With an emulator already running
+(`firebase emulators:start --only firestore --project demo-ani`), `npm run test:attached -w
+@ani/rules-tests` reuses it.
+
+- Catalogue (`series/**`), `importAgent`, `importScan`, `importJobs`, `overrides`: read by uids in
+  `config/access`; the app's writes there are limited to what the Import page needs.
+- `users/{uid}/**`: only that uid, only when allowlisted. Every write is checked against the
+  `packages/contracts` shapes (keys, types, enums, sizes); unknown sub-collections are denied.
+  Change a contract → change the rule and its test.
+- `importState` and anything not listed: importer / agent only (Admin SDK bypasses rules).
+
+`firestore.indexes.json`: no composite indexes (the app sorts client-side; the importer only
+uses single-field equality). Large nested fields that are never queried (episode tracks and
+chapters, synopsis, import candidates/results) are excluded from indexing to save index writes.
+
+Deploy both with `firebase deploy --only firestore`.
 
 ## How sign-in and streaming work
 

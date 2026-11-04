@@ -77,6 +77,7 @@ class FakeUserData extends UserDataRepository {
   removeFavourite = async () => undefined;
   saveRecent = async () => undefined;
   deleteRecent = async () => undefined;
+  clearHistory = async () => 0;
 }
 
 class FakeSchedule extends SchedulePort {

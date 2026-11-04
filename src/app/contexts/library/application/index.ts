@@ -4,7 +4,7 @@
  * Other contexts and the shell may import only from this file, never from another
  * context's domain/, infrastructure/ or ui/.
  */
-export { LibraryStore } from './library.store';
+export { LibraryStore, type LibraryExport } from './library.store';
 export { ProgressTracker } from './progress-tracker';
 export {
   fraction,

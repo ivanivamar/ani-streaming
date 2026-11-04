@@ -90,6 +90,16 @@ export class ReleasesStore {
     });
   }
 
+  /** Settings → Export JSON: the "notify me" flags, read fresh from Firestore. */
+  async exportNotify(): Promise<{ key: string; title: string; ep?: number; at: string }[]> {
+    const uid = this.session.uid();
+    if (!uid) return [];
+    const list = await this.notifyRepo.list(uid);
+    return list
+      .sort((a, b) => b.at - a.at)
+      .map((n) => ({ key: n.key, title: n.title, ...(n.ep !== undefined ? { ep: n.ep } : {}), at: new Date(n.at).toISOString() }));
+  }
+
   /** AniList id → our series/season (series id covers season 1; later seasons carry their own id). */
   private libraryMatches(): Promise<Map<number, LibraryMatch>> {
     this.matches ??= (async () => {

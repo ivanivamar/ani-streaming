@@ -83,9 +83,9 @@
       <div class="row">
         <div class="text">
           <div class="label">Export</div>
-          <div class="desc">Download your library, watch progress, favourites and preferences as JSON.</div>
+          <div class="desc">Download your library, watch progress, favourites, notifications and preferences as JSON.</div>
         </div>
-        <button type="button" class="btn btn-outline btn-sm" (click)="exportData()">Export JSON</button>
+        <button type="button" class="btn btn-outline btn-sm" [disabled]="exporting()" (click)="exportData()">{{ exporting() ? 'Exporting…' : 'Export JSON' }}</button>
       </div>
       <div class="row">
         <div class="text">
@@ -106,5 +106,8 @@
         </button>
       </div>
     </div>
+    @if (dataError(); as e) {
+      <div class="notice-error" role="alert">{{ e }}</div>
+    }
   </section>
 </div>

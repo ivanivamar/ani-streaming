@@ -17,6 +17,14 @@ import {
 
 const RECENT_LIMIT = 6;
 
+/** Settings → Export JSON: the library context's part (dates as ISO strings). */
+export interface LibraryExport {
+  readonly progress: readonly { seriesId: string; episodeId: string; position: number; duration: number; updatedAt: string }[];
+  readonly library: readonly { seriesId: string; status: LibraryStatus; watched: number; updatedAt: string }[];
+  readonly favourites: readonly { seriesId: string; addedAt: string }[];
+  readonly recentSearches: readonly { term: string; at: string }[];
+}
+
 /**
  * The user's own data: watch progress, library status, favourites, recent searches. Loaded once
  * per sign-in (the Firestore persistent cache makes that cheap), kept in signals, writes are
@@ -138,11 +146,19 @@ export class LibraryStore {
     this.removeProgress([...this._progress().values()].filter((p) => p.seriesId === seriesId));
   }
 
-  /** Settings → Clear watch history. */
-  clearHistory(): Promise<void> {
-    const all = [...this._progress().values()];
+  /**
+   * Settings → Clear watch history: every progress doc in Firestore (also ones never loaded
+   * here) and the watched counts on library entries. Unlike the other writes this one is awaited
+   * and rejects on failure, so Settings can say so; memory is cleared only once it succeeded.
+   */
+  async clearHistory(): Promise<number> {
+    const uid = this.session.uid();
+    if (!uid) return 0;
+    const removed = await this.repo.clearHistory(uid);
+    if (this.session.uid() !== uid) return removed;
     this._progress.set(new Map());
-    return this.write((uid) => this.repo.deleteProgress(uid, all));
+    this._entries.update((m) => new Map([...m].map(([id, e]) => [id, e.watched ? { ...e, watched: 0 } : e])));
+    return removed;
   }
 
   /* ── library status ── */
@@ -203,14 +219,24 @@ export class LibraryStore {
     this.write((uid) => this.repo.deleteRecent(uid, [id]));
   }
 
-  /** Settings → Export: everything this context holds, as plain JSON. */
-  exportData(): object {
+  /**
+   * Settings → Export: everything this context stores for the user, read fresh from Firestore
+   * (not the in-memory copy), as plain JSON with ISO dates.
+   */
+  async exportData(): Promise<LibraryExport> {
+    const uid = this.session.uid();
+    if (!uid) throw new Error('Not signed in');
+    const data = await this.repo.load(uid);
+    const iso = (t: number) => new Date(t).toISOString();
     return {
-      exportedAt: new Date().toISOString(),
-      progress: this.history(),
-      library: [...this._entries().values()],
-      favourites: [...this._favourites().values()],
-      recentSearches: this._recent(),
+      progress: [...data.progress]
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .map((p) => ({ seriesId: p.seriesId, episodeId: p.episodeId, position: p.position, duration: p.duration, updatedAt: iso(p.updatedAt) })),
+      library: [...data.entries]
+        .sort((a, b) => a.seriesId.localeCompare(b.seriesId))
+        .map((e) => ({ seriesId: e.seriesId, status: e.status, watched: e.watched, updatedAt: iso(e.updatedAt) })),
+      favourites: [...data.favourites].sort((a, b) => b.addedAt - a.addedAt).map((f) => ({ seriesId: f.seriesId, addedAt: iso(f.addedAt) })),
+      recentSearches: [...data.recent].sort((a, b) => b.at - a.at).map((r) => ({ term: r.term, at: iso(r.at) })),
     };
   }
 
