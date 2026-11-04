@@ -1,0 +1,11 @@
+{
+  "/api": {
+    "target": "https://myanime-streaming.web.app",
+    "secure": true,
+    "changeOrigin": true,
+    "headers": {
+      "origin": "https://myanime-streaming.web.app",
+      "x-forwarded-host": "myanime-streaming.web.app"
+    }
+  }
+}

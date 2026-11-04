@@ -1,0 +1,26 @@
+{
+  "name": "@ani/import",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Encode + Drive upload + Firestore catalogue importer (PLAN.md Steps 1-2).",
+  "type": "module",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "dry-run": "node src/cli.ts dry-run",
+    "import": "node src/cli.ts import",
+    "test-encode": "node src/cli.ts test-encode",
+    "allow": "node src/cli.ts allow",
+    "agent": "node src/cli.ts agent",
+    "test": "node --import ./src/resolve-ts.ts --test \"src/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ani/contracts": "*",
+    "@google-cloud/local-auth": "^3.0.1",
+    "firebase-admin": "^14.5.0",
+    "googleapis": "^189.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
+  }
+}

@@ -1,0 +1,153 @@
+<div class="page">
+  @if (series.error(); as error) {
+    <div class="error-card" role="alert">
+      <h3>Could not load the catalogue</h3>
+      <p>{{ error.message }}</p>
+      <button type="button" class="btn btn-primary btn-sm" (click)="series.reload()">Retry</button>
+    </div>
+  } @else {
+    <section>
+      <div class="cw-head">
+        <h1 class="h-page">Continue watching</h1>
+        <span class="count">{{ inProgress().length }} in progress</span>
+        <span class="grow"></span>
+        @if (carouselItems().length) {
+          <div class="arrows">
+            <button type="button" class="icon-btn" title="Previous" aria-label="Previous" (click)="scrollCarousel(-1)">
+              <app-icon name="chevron-left" [size]="16" [stroke]="2" />
+            </button>
+            <button type="button" class="icon-btn" title="Next" aria-label="Next" (click)="scrollCarousel(1)">
+              <app-icon name="chevron-right" [size]="16" [stroke]="2" />
+            </button>
+          </div>
+        }
+      </div>
+
+      @if (loading()) {
+        <div class="cw">
+          <div class="hero skeleton"></div>
+          <div class="carousel">
+            @for (i of [1, 2, 3]; track i) {
+              <div class="car-item skeleton sk-poster"></div>
+            }
+          </div>
+        </div>
+      } @else if (hero(); as h) {
+        <div class="cw">
+          <a
+            #heroEl
+            class="hero"
+            [routerLink]="watchLink(h)"
+            [style.background]="heroBg(h)"
+            (click)="launchHero(heroEl, h)"
+            (contextmenu)="progressMenu($event, h)"
+          >
+            <div class="hero-shade"></div>
+            <div class="hero-poster"><app-poster [src]="h.series.posterUrl" [seed]="h.series.id" priority /></div>
+            <div class="hero-text">
+              <div class="hero-eyebrow">Last watched · {{ h.ago }}</div>
+              <div class="hero-title">{{ h.series.title }}</div>
+              <div class="hero-sub">{{ h.sub }}</div>
+              <div class="hero-bar"><i [style.width.%]="h.fraction * 100"></i></div>
+              <span class="hero-resume"><app-icon name="play-fill" [size]="12" />Resume</span>
+            </div>
+          </a>
+          <div class="carousel-wrap">
+            <div class="carousel" #carousel appStagger>
+              @for (c of carouselItems(); track c.series.id) {
+                <app-poster-card
+                  class="car-item"
+                  [title]="c.series.title"
+                  [meta]="c.sub"
+                  [src]="c.series.posterUrl"
+                  [seed]="c.series.id"
+                  [link]="watchLink(c)"
+                  [progress]="c.fraction"
+                  hasMenu
+                  launch
+                  (menu)="progressMenu($event, c)"
+                >
+                  <span cardBottom class="chip">{{ c.label }}</span>
+                </app-poster-card>
+              }
+            </div>
+          </div>
+        </div>
+      } @else {
+        <div class="empty-home card">
+          <div>
+            <div class="empty-title">Nothing in progress</div>
+            <p>Pick something from the catalogue below. Episodes you start show up here so you can resume them on any device.</p>
+          </div>
+          <a class="btn btn-outline btn-sm" routerLink="/search">Browse the catalogue</a>
+        </div>
+      }
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2 class="h-section">Recently added</h2>
+        <span class="count">new episodes</span>
+      </div>
+      @if (loading()) {
+        <div class="poster-grid">
+          @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+            <div class="skeleton sk-poster"></div>
+          }
+        </div>
+      } @else if (added().length) {
+        <div class="poster-grid" appStagger>
+          @for (a of added(); track a.series.id) {
+            <app-poster-card
+              [title]="a.series.title"
+              [meta]="a.meta"
+              [src]="a.series.posterUrl"
+              [seed]="a.series.id"
+              [link]="watchLink(a)"
+              hasMenu
+              launch
+              (menu)="addedMenu($event, a)"
+            >
+              <ng-container cardBottom>
+                @if (a.isNew) {
+                  <span class="chip new">NEW</span>
+                }
+                <span class="chip">{{ a.label }}</span>
+              </ng-container>
+            </app-poster-card>
+          }
+        </div>
+      } @else {
+        <div class="empty">
+          Nothing imported yet.
+          <div class="hint">npm run import -w &#64;ani/import</div>
+        </div>
+      }
+    </section>
+
+    @if (history().length) {
+      <section>
+        <div class="section-head">
+          <h2 class="h-section">Recently watched</h2>
+          <span class="count">{{ history().length }} titles</span>
+        </div>
+        <div class="poster-grid" appStagger>
+          @for (a of history(); track a.series.id) {
+            <app-poster-card
+              [title]="a.series.title"
+              [meta]="a.finished ? 'Finished · ' + a.ago : a.label + ' · ' + a.ago"
+              [src]="a.series.posterUrl"
+              [seed]="a.series.id"
+              [link]="['/anime', a.series.id]"
+              [progress]="a.finished ? null : a.fraction"
+              hasMenu
+              (menu)="progressMenu($event, a)"
+            >
+              <span cardBottom class="chip">{{ a.label }}</span>
+            </app-poster-card>
+          }
+        </div>
+      </section>
+    }
+  }
+</div>

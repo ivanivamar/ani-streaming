@@ -1,0 +1,137 @@
+<div class="page">
+  <button type="button" class="back-btn" (click)="back()"><app-icon name="back" [size]="18" [stroke]="2" />Back</button>
+
+  @if (detail.isLoading() && !detail.hasValue()) {
+    <div class="hero">
+      <div class="poster skeleton"></div>
+      <div class="info">
+        <div class="skeleton sk-line" style="width: 60%; height: 40px"></div>
+        <div class="skeleton sk-line" style="width: 30%"></div>
+        <div class="skeleton sk-line" style="width: 90%; height: 72px"></div>
+      </div>
+    </div>
+  } @else if (detail.error(); as error) {
+    <div class="error-card" role="alert">
+      <h3>Could not load this series</h3>
+      <p>{{ error.message }}</p>
+      <button type="button" class="btn btn-primary btn-sm" (click)="detail.reload()">Retry</button>
+    </div>
+  } @else if (detail.value(); as d) {
+    <div class="hero">
+      <div class="poster">
+        <app-poster [src]="d.series.posterUrl" [seed]="d.series.id" priority />
+        <div class="poster-shade"></div>
+      </div>
+      <div class="info">
+        <h1>{{ d.series.title }}</h1>
+        <div class="facts">
+          @if (d.series.year) {
+            <span>{{ d.series.year }}</span>
+          }
+          @if (d.series.status) {
+            <span class="sep">•</span><span>{{ statusName[d.series.status] }}</span>
+          }
+          <span class="sep">•</span><span>{{ d.series.episodeCount }} episode{{ d.series.episodeCount === 1 ? '' : 's' }}</span>
+        </div>
+        @if (d.series.genres.length) {
+          <div class="genres" appStagger>
+            @for (g of d.series.genres; track g) {
+              <a class="genre" [routerLink]="['/search']" [queryParams]="{ genre: g }">{{ g }}</a>
+            }
+          </div>
+        }
+        @if (d.series.synopsis) {
+          <p class="synopsis">{{ d.series.synopsis }}</p>
+        }
+        <div class="actions">
+          @if (resume(); as r) {
+            <a
+              #play
+              class="btn btn-primary"
+              [routerLink]="watchLink(d, r.episode)"
+              [queryParams]="r.finished ? { t: 0 } : null"
+              (click)="launch(play, 'var(--accent)')"
+            >
+              <app-icon name="play-fill" [size]="13" />{{ playLabel() }}
+            </a>
+          }
+          <button
+            type="button"
+            class="btn btn-outline fav"
+            [class.saved]="library.isFavourite(d.series.id)"
+            [attr.aria-pressed]="library.isFavourite(d.series.id)"
+            (click)="library.toggleFavourite(d.series.id)"
+          >
+            @if (library.isFavourite(d.series.id)) {
+              Saved <app-icon name="check" [size]="15" [stroke]="2.4" />
+            } @else {
+              + Add to favourites
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+
+    @if (seasons().length > 1) {
+      <div class="seasons" appStagger>
+        @for (s of seasons(); track s.number) {
+          <button type="button" appPill class="pill-lg" [on]="season() === s.number" (click)="season.set(s.number)">{{ s.name }}</button>
+        }
+      </div>
+    }
+
+    <div class="ep-meta mono">
+      <span class="note">{{ tiles().length }} episodes{{ seasons().length > 1 ? ' · season ' + season() : '' }}</span>
+      <span class="watched">{{ watchedCount() }} / {{ tiles().length }} watched</span>
+    </div>
+    <div class="strip">
+      @for (t of tiles(); track t.ep.id) {
+        <a [routerLink]="watchLink(d, t.ep)" [title]="t.label" [style.background]="segColor(t)" [attr.aria-label]="t.label"></a>
+      }
+    </div>
+
+    @if (tiles().length) {
+      <div class="eps" appStagger>
+        @for (t of tiles(); track t.ep.id) {
+          <a
+            #tile
+            class="tile"
+            [class.next]="t.next"
+            [class.done]="t.watched"
+            [routerLink]="watchLink(d, t.ep)"
+            [title]="t.label"
+            [style.background]="t.gradient"
+            (click)="launch(tile, t.gradient)"
+            (contextmenu)="tileMenu($event, d, t)"
+          >
+            @if (t.thumb) {
+              <img [src]="t.thumb" alt="" loading="lazy" decoding="async" (error)="$any($event.target).remove()" />
+            } @else {
+              <div class="dots"></div>
+            }
+            <div class="shade"></div>
+            <div class="num">
+              <span class="ep">EP</span><span class="n">{{ t.num }}</span>
+            </div>
+            @if (t.duration) {
+              <span class="dur mono">{{ t.duration }}</span>
+            }
+            @if (t.next) {
+              <span class="badge up"><app-icon name="play-fill" [size]="9" />{{ t.fraction > 0 ? pct(t.fraction) : 'UP NEXT' }}</span>
+            } @else if (t.watched) {
+              <span class="badge"><app-icon name="check" [size]="10" [stroke]="2.6" />WATCHED</span>
+            }
+            @if (t.fraction > 0 && !t.watched) {
+              <div class="prog"><i [style.width.%]="t.fraction * 100"></i></div>
+            }
+          </a>
+        }
+      </div>
+    } @else {
+      <div class="empty">No episodes imported for this season yet.</div>
+    }
+  } @else {
+    <h1 class="h-page">Not found</h1>
+    <p class="missing">There's no series "{{ seriesId() }}" in the catalogue.</p>
+  }
+</div>

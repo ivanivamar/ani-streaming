@@ -1,0 +1,19 @@
+{
+  "name": "@ani/rules-tests",
+  "version": "0.0.0",
+  "private": true,
+  "description": "firestore.rules tests against the Firestore emulator (PLAN.md Step 6).",
+  "type": "module",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project demo-ani \"vitest run\"",
+    "test:attached": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.2.0",
+    "firebase-tools": "^15.34.0",
+    "typescript": "~6.0.2",
+    "vitest": "^5.0.0"
+  }
+}

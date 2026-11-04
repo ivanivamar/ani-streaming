@@ -1,0 +1,113 @@
+<div class="page">
+  <h1 class="h-page">Settings</h1>
+
+  <section>
+    <div class="sec-head">
+      <h2>Account</h2>
+      <p>The Google account that signs you in and holds the AniStream folder on Drive.</p>
+    </div>
+    <div class="profile card">
+      <app-avatar [name]="account()?.name || account()?.email" [photo]="account()?.photo" [size]="64" badge />
+      <div class="who">
+        <div class="name">{{ account()?.name || account()?.email }}</div>
+        <div class="email">{{ account()?.email }}</div>
+        <div class="gchip"><app-google-g [size]="12" />Google account · Drive read-only</div>
+      </div>
+      <div class="acct-actions">
+        <button type="button" class="btn btn-outline btn-sm" (click)="switchAccount()">Switch account</button>
+        <button type="button" class="btn btn-quiet btn-sm" (click)="signOut()">Sign out</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Playback</h2>
+      <p>Defaults for every episode. Saved to your account, so they follow you to other devices.</p>
+    </div>
+    <div class="settings-group">
+      <div class="row">
+        <div class="text">
+          <div class="label" id="subs">Subtitles</div>
+          <div class="desc">Full subtitles, only signs &amp; songs, or none. The CC button in the player changes it per episode.</div>
+        </div>
+        <app-segmented [formField]="f.subtitles" [options]="subtitleOptions" tone="inset" size="sm" aria-labelledby="subs" />
+      </div>
+      <div class="row">
+        <div class="text">
+          <div class="label">Autoplay next episode</div>
+          <div class="desc">Start the next episode when one ends.</div>
+        </div>
+        <app-toggle [formField]="f.autoplayNext" label="Autoplay next episode" />
+      </div>
+      <div class="row">
+        <div class="text">
+          <div class="label">Skip openings automatically</div>
+          <div class="desc">Uses the episode's chapters, or AniSkip's community times when the chapters don't mark the opening. Endings always get a Skip button instead.</div>
+        </div>
+        <app-toggle [formField]="f.autoSkipIntro" label="Skip openings automatically" />
+      </div>
+      <div class="row">
+        <div class="text">
+          <div class="label">Resume where you left off</div>
+          <div class="desc">Otherwise episodes start from the beginning.</div>
+        </div>
+        <app-toggle [formField]="f.resume" label="Resume where you left off" />
+      </div>
+      <div class="row">
+        <div class="text">
+          <div class="label" id="thr">Mark as watched at</div>
+          <div class="desc">How far into an episode it counts as watched.</div>
+        </div>
+        <app-segmented [formField]="f.watchedThreshold" [options]="thresholdOptions" tone="inset" size="sm" aria-labelledby="thr" />
+      </div>
+      <div class="row">
+        <div class="text">
+          <div class="label">Video decoding</div>
+          <div class="desc">{{ (decode.hasValue() ? decode.value().advice : null) ?? 'Episodes are HEVC 10-bit. This browser decodes them on the GPU.' }}</div>
+        </div>
+        <span class="decode-chip" [attr.data-support]="decode.hasValue() ? decode.value().support : 'unknown'">{{ decodeLine() }}</span>
+      </div>
+    </div>
+    @if (saveError(); as e) {
+      <div class="notice-error" role="alert">Couldn't save: {{ e }}</div>
+    }
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Data</h2>
+      <p>Your library, progress and favourites live in Firestore under your account. The episodes on Drive are never touched.</p>
+    </div>
+    <div class="settings-group">
+      <div class="row">
+        <div class="text">
+          <div class="label">Export</div>
+          <div class="desc">Download your library, watch progress, favourites, notifications and preferences as JSON.</div>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" [disabled]="exporting()" (click)="exportData()">{{ exporting() ? 'Exporting…' : 'Export JSON' }}</button>
+      </div>
+      <div class="row">
+        <div class="text">
+          <div class="label">Clear watch history</div>
+          <div class="desc">{{ done() ?? 'Forgets every episode position. Library statuses and favourites stay.' }}</div>
+        </div>
+        <button type="button" class="btn btn-sm danger" [class.armed]="armed() === 'clear'" [disabled]="busy() === 'clear'" (click)="destructive('clear')">
+          {{ armed() === 'clear' ? 'Click again to confirm' : busy() === 'clear' ? 'Clearing…' : 'Clear history' }}
+        </button>
+      </div>
+      <div class="row">
+        <div class="text">
+          <div class="label danger-text">Delete account data</div>
+          <div class="desc">Removes everything stored for you here and signs you out. The catalogue and Drive files stay.</div>
+        </div>
+        <button type="button" class="btn btn-sm danger" [class.armed]="armed() === 'delete'" [disabled]="busy() === 'delete'" (click)="destructive('delete')">
+          {{ armed() === 'delete' ? 'Click again to confirm' : busy() === 'delete' ? 'Deleting…' : 'Delete data' }}
+        </button>
+      </div>
+    </div>
+    @if (dataError(); as e) {
+      <div class="notice-error" role="alert">{{ e }}</div>
+    }
+  </section>
+</div>

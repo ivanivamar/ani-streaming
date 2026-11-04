@@ -1,0 +1,17 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    { "collectionGroup": "series", "fieldPath": "synopsis", "indexes": [] },
+    { "collectionGroup": "series", "fieldPath": "fontFileIds", "indexes": [] },
+    { "collectionGroup": "episodes", "fieldPath": "video", "indexes": [] },
+    { "collectionGroup": "episodes", "fieldPath": "audio", "indexes": [] },
+    { "collectionGroup": "episodes", "fieldPath": "subs", "indexes": [] },
+    { "collectionGroup": "episodes", "fieldPath": "chapters", "indexes": [] },
+    { "collectionGroup": "episodes", "fieldPath": "source", "indexes": [] },
+    { "collectionGroup": "importScan", "fieldPath": "candidates", "indexes": [] },
+    { "collectionGroup": "importScan", "fieldPath": "match", "indexes": [] },
+    { "collectionGroup": "importJobs", "fieldPath": "sources", "indexes": [] },
+    { "collectionGroup": "importJobs", "fieldPath": "labels", "indexes": [] },
+    { "collectionGroup": "importJobs", "fieldPath": "results", "indexes": [] }
+  ]
+}

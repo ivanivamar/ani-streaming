@@ -1,0 +1,259 @@
+<div class="page">
+  <div>
+    <h1 class="h-page title">Import</h1>
+    <p class="intro">
+      Episodes from the folder on your PC. Files are grouped by series using their names and matched against AniList; the import
+      agent on the PC encodes, uploads them to Drive and adds them to your library, one at a time.
+    </p>
+  </div>
+
+  <!-- agent -->
+  @if (!store.loaded() && !store.error()) {
+    <div class="agent skeleton" style="height: 74px"></div>
+  } @else if (store.online()) {
+    @let a = agentLine()!;
+    <div class="agent on">
+      <span class="pulse"></span>
+      <div class="agent-text">
+        <div class="agent-title">Import agent on {{ a.host }} · {{ a.state }}</div>
+        <div class="agent-meta mono">{{ a.folder }} · {{ a.scanned }} · {{ a.budget }}</div>
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" [disabled]="store.agent()?.state !== 'idle'" (click)="rescan()">
+        <app-icon name="refresh" [size]="15" [stroke]="1.9" />Rescan
+      </button>
+    </div>
+  } @else {
+    <div class="agent off">
+      <span class="dot-off"></span>
+      <div class="agent-text">
+        <div class="agent-title">The import agent isn’t running</div>
+        <div class="agent-meta">
+          @if (agentLine(); as a) {
+            Last seen on {{ a.host }} {{ a.seen }}.
+          }
+          Start it on the PC from the repo folder, and leave the window open while it imports:
+        </div>
+        <div class="cmd">
+          <code class="mono">{{ command }}</code>
+          <button type="button" class="copy" [title]="copied() ? 'Copied' : 'Copy'" aria-label="Copy command" (click)="copyCommand()">
+            <app-icon [name]="copied() ? 'check' : 'copy'" [size]="14" [stroke]="1.9" />
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (store.error(); as err) {
+    <div class="notice-error" role="alert">
+      Couldn’t read the import state: {{ err }}. If it says “permission”, deploy the new Firestore rules
+      (<span class="mono">firebase deploy --only firestore:rules</span>).
+    </div>
+  }
+
+  <!-- jobs -->
+  @for (job of store.activeJobs(); track job.id) {
+    <div class="job running">
+      <div class="job-head">
+        <div class="job-icon"><app-icon name="import" [size]="18" /></div>
+        <div class="job-text">
+          <div class="job-title">{{ jobTitle(job) }}</div>
+          <div class="job-line">{{ jobLine(job) }}</div>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" [disabled]="job.cancelRequested" (click)="cancel(job)">
+          {{ job.cancelRequested ? 'Stopping…' : job.status === 'queued' ? 'Cancel' : 'Stop after this one' }}
+        </button>
+      </div>
+      <div class="job-bar"><i [style.width.%]="progress(job) * 100"></i></div>
+      <div class="job-chips">
+        @for (c of jobChips(job); track $index) {
+          <span class="jc" [class]="c.cls" [title]="c.tip">{{ c.label }}</span>
+        }
+      </div>
+    </div>
+  }
+  @for (job of store.finishedJobs(); track job.id) {
+    @if (job.status === 'done') {
+      <div class="done-banner">
+        <div class="tick"><app-icon name="check" [size]="16" [stroke]="3" /></div>
+        <div class="done-text">
+          <div class="done-title">{{ jobTitle(job) }}</div>
+          <div class="done-sub">{{ jobLine(job) }}</div>
+        </div>
+        <a class="btn btn-primary btn-sm" routerLink="/">View library</a>
+      </div>
+    } @else if (job.status === 'failed') {
+      <div class="job failed">
+        <div class="job-head">
+          <div class="job-icon bad"><app-icon name="close" [size]="16" [stroke]="2.2" /></div>
+          <div class="job-text">
+            <div class="job-title">{{ jobTitle(job) }}</div>
+            <div class="job-line">{{ jobLine(job) }}</div>
+          </div>
+        </div>
+        <ul class="fail-list">
+          @for (f of failures(job); track f.label) {
+            <li><span class="mono">{{ f.label }}</span> {{ f.detail }}</li>
+          }
+        </ul>
+      </div>
+    }
+  }
+
+  <!-- drop zone -->
+  <div
+    class="zone"
+    [class.over]="dragOver()"
+    role="button"
+    tabindex="0"
+    (click)="picker.click()"
+    (keydown.enter)="picker.click()"
+    (dragover)="onDragOver($event)"
+    (dragleave)="dragOver.set(false)"
+    (drop)="onDrop($event)"
+  >
+    <div class="zone-icon"><app-icon name="film" [size]="22" [stroke]="1.8" /></div>
+    <div class="zone-text">
+      <div class="zone-title">{{ dragOver() ? 'Drop to select these episodes' : 'Drop episode files here to select them' }}</div>
+      <div class="zone-sub">
+        The agent reads the files from <span class="mono">{{ store.agent()?.sourceDir ?? 'its folder' }}</span>, so put new
+        episodes there first. Names like <span class="mono">[Group] Title - S01E05 (1080p).mkv</span> or
+        <span class="mono">Title.S02E05.mkv</span>.
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" (click)="$event.stopPropagation(); picker.click()">Choose files</button>
+    <input #picker type="file" multiple accept="video/*,.mkv,.avi,.m2ts" hidden (change)="onPicked(picker)" (click)="$event.stopPropagation()" />
+  </div>
+  @if (notice(); as n) {
+    <div class="notice">{{ n }}<button type="button" class="x" aria-label="Dismiss" (click)="notice.set(null)"><app-icon name="close" [size]="11" [stroke]="2.2" /></button></div>
+  }
+
+  <!-- review -->
+  @if (store.scan().length) {
+    <section>
+      <div class="section-head">
+        <h2 class="h-section">Review files</h2>
+        <span class="count">{{ store.scan().length }} files</span>
+      </div>
+      <div class="tabs" appStagger>
+        @for (t of tabs(); track t.value) {
+          <button type="button" appPill class="pill-md" [on]="tab() === t.value" (click)="tab.set(t.value)">{{ t.name }}<span class="n">{{ t.count }}</span></button>
+        }
+      </div>
+
+      <div class="select-all">
+        <button type="button" class="check" [class.on]="allSelected()" [disabled]="!selectedEntries().length && !groups().length" aria-label="Select all" (click)="toggleAll()">
+          @if (allSelected()) {
+            <app-icon name="check" [size]="12" [stroke]="3.2" />
+          }
+        </button>
+        <span>{{ selectedEntries().length ? selectedEntries().length + ' selected' : 'Select everything ready to import' }}</span>
+      </div>
+
+      <div class="rows">
+        @for (g of groups(); track g.key) {
+          <div class="row" [class.warn]="g.needsReview && g.key !== '?'" [class.bad]="g.key === '?'">
+            <div class="row-main">
+              <button
+                type="button"
+                class="check"
+                [class.on]="groupState(g) === 'all'"
+                [class.some]="groupState(g) === 'some'"
+                [disabled]="!groupSelectable(g)"
+                [attr.aria-label]="'Select ' + g.title"
+                (click)="toggleGroup(g)"
+              >
+                @if (groupState(g) === 'all') {
+                  <app-icon name="check" [size]="12" [stroke]="3.2" />
+                } @else if (groupState(g) === 'some') {
+                  <span class="dash"></span>
+                }
+              </button>
+              <div class="src">
+                <div class="src-title">{{ g.title }}{{ g.season ? ' · Season ' + g.season : '' }}</div>
+                <div class="src-meta mono">{{ srcMeta(g) }}</div>
+              </div>
+              <app-icon name="go" [size]="16" [stroke]="2" class="arrow" />
+              <div class="match">
+                @if (g.match; as m) {
+                  <div class="m-poster" [style.background]="poster(m.posterUrl, m.anilistId)"></div>
+                  <div class="m-text">
+                    <div class="m-title">{{ m.title }}</div>
+                    <div class="m-tag" [class.add]="g.inLibrary"><span></span>{{ g.inLibrary ? 'Adds to your library entry' : 'New to your library' }}</div>
+                  </div>
+                } @else if (g.key === '?') {
+                  <div class="m-none">Rename these files so the episode number can be read.</div>
+                } @else if (g.candidates.length) {
+                  <app-dropdown
+                    class="m-pick"
+                    [options]="candidateOptions(g)"
+                    [value]="0"
+                    (valueChange)="useMatch(g, $event)"
+                    placeholder="Which AniList entry is this?"
+                    title="AniList candidates"
+                    [menuWidth]="320"
+                  />
+                } @else {
+                  <div class="m-none">No AniList match{{ g.matchProblem ? ' — ' + g.matchProblem : '' }}. Set <span class="mono">overrides/{{ g.seriesId }}</span> in Firestore.</div>
+                }
+              </div>
+              <button type="button" class="files-btn" [attr.aria-expanded]="open().has(g.key)" (click)="toggleOpen(g)">
+                {{ g.entries.length }} file{{ g.entries.length === 1 ? '' : 's' }}
+                <app-icon name="chevron-down" [size]="12" [stroke]="2.2" [class.flip]="open().has(g.key)" />
+              </button>
+            </div>
+
+            @if (g.key !== '?') {
+              <div class="chips">
+                @for (c of chips(g); track $index) {
+                  <span class="chip-ep" [class]="c.cls" [title]="c.tip">{{ c.n }}</span>
+                }
+              </div>
+            }
+
+            @if (open().has(g.key)) {
+              <div class="files">
+                @for (e of g.entries; track e.id) {
+                  <div class="file" [class.sel]="selected().has(e.id)">
+                    <button type="button" class="check sm" [class.on]="selected().has(e.id) && canSelect(e)" [disabled]="!canSelect(e)" [attr.aria-label]="'Select ' + e.fileName" (click)="toggleEntry(e)">
+                      @if (selected().has(e.id) && canSelect(e)) {
+                        <app-icon name="check" [size]="10" [stroke]="3.2" />
+                      }
+                    </button>
+                    <span class="f-ep mono">{{ entryLabel(e) }}</span>
+                    <span class="f-name mono" [title]="e.relPath">{{ e.fileName }}</span>
+                    <span class="f-status" [class.bad]="e.status === 'failed' || e.status === 'unparseable'">{{ entryStatus(e) }}</span>
+                    <span class="f-size mono">{{ size(e.size) }}</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        } @empty {
+          <div class="empty">Nothing in this tab.</div>
+        }
+      </div>
+
+      <div class="footer-bar">
+        <div class="fb-text">
+          <div class="fb-title">
+            {{ selectedEntries().length ? selectedEntries().length + ' episode' + (selectedEntries().length === 1 ? '' : 's') + ' selected' : 'Nothing selected' }}
+          </div>
+          <div class="fb-sub">
+            {{ selectedEntries().length ? size(selectedBytes()) + ' of originals · encoded on the PC, then uploaded to Drive' : 'Tick episodes above or drop their files on the drop zone.' }}
+          </div>
+        </div>
+        <label class="force">
+          <input type="checkbox" [checked]="forceEncode()" (change)="forceEncode.set($any($event.target).checked)" />
+          Re-encode even when the video could be copied
+        </label>
+        <button type="button" class="btn btn-primary" [disabled]="!selectedEntries().length || busy()" (click)="queue()">
+          {{ store.online() ? 'Import' : 'Queue' }} {{ selectedEntries().length || '' }}
+        </button>
+      </div>
+    </section>
+  } @else if (store.loaded()) {
+    <div class="empty">
+      {{ store.agent() ? 'No video files in the agent’s folder.' : 'Nothing scanned yet — start the agent on the PC.' }}
+    </div>
+  }
+</div>

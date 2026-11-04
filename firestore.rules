@@ -1,0 +1,162 @@
+rules_version = '2';
+
+// ani.stream (PLAN.md "Where data lives"). Tested by tools/rules-tests (`npm run test:rules`).
+// uid comes from /api/firebase/token: "g" + the Google Drive permission id of the account.
+// The importer and the import agent write with the Admin SDK, which bypasses these rules.
+// Anything not matched below is denied (importState, unknown collections, catalogue writes).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // config/access { allowedUids: [...] } — the allowlist. Only someone on it can read it,
+    // so the app learns "allowed" or "not allowed" by trying.
+    function allowed() {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/config/access).data.allowedUids;
+    }
+
+    function owner(uid) {
+      return allowed() && request.auth.uid == uid;
+    }
+
+    // ── value helpers ──────────────────────────────────────────────────────────────────────
+    function optString(m, k, max) {
+      return !(k in m) || m[k] == null || (m[k] is string && m[k].size() <= max);
+    }
+    function optBool(m, k) {
+      return !(k in m) || m[k] is bool;
+    }
+    function shortString(v, max) {
+      return v is string && v.size() > 0 && v.size() <= max;
+    }
+    function validPrefs(p) {
+      return p is map
+        && p.keys().hasOnly(['autoplayNext', 'autoSkipIntro', 'subtitles', 'resume', 'watchedThreshold'])
+        && optBool(p, 'autoplayNext')
+        && optBool(p, 'autoSkipIntro')
+        && optBool(p, 'resume')
+        && (!('subtitles' in p) || p.subtitles in ['full', 'signs', 'off'])
+        && (!('watchedThreshold' in p) || p.watchedThreshold in [0.8, 0.9, 0.95]);
+    }
+
+    match /config/access {
+      allow read: if signedIn() && request.auth.uid in resource.data.allowedUids;
+    }
+
+    // Catalogue: read-only for allowlisted users, written only by the importer.
+    match /series/{seriesId} {
+      allow read: if allowed();
+      match /{sub=**} {
+        allow read: if allowed();
+      }
+    }
+
+    // ── users/{uid}: each allowlisted user reads and writes only their own tree ─────────────
+    // Every write is checked against the shapes in packages/contracts (UserDoc, ProgressDoc, …).
+    // Deletes are always allowed for the owner (clear history, delete account data).
+    match /users/{uid} {
+      function validUser(d) {
+        return d.keys().hasOnly(['displayName', 'email', 'photoURL', 'createdAt', 'prefs'])
+          && d.keys().hasAll(['createdAt', 'prefs'])
+          && optString(d, 'displayName', 200)
+          && optString(d, 'email', 320)
+          && optString(d, 'photoURL', 2048)
+          && d.createdAt is timestamp
+          && validPrefs(d.prefs);
+      }
+
+      allow read, delete: if owner(uid);
+      allow create: if owner(uid) && validUser(request.resource.data);
+      allow update: if owner(uid)
+        && validUser(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      // progress/{seriesId}_{episodeId}  { position, duration, updatedAt }
+      match /progress/{id} {
+        allow read, delete: if owner(uid);
+        allow create, update: if owner(uid)
+          && id.matches('^[a-z0-9]+(-[a-z0-9]+)*_s[0-9]{2,}e[0-9]{2,}$')
+          && request.resource.data.keys().hasOnly(['position', 'duration', 'updatedAt'])
+          && request.resource.data.position is number
+          && request.resource.data.duration is number
+          && request.resource.data.position >= 0
+          && request.resource.data.duration > 0
+          && request.resource.data.duration <= 86400
+          && request.resource.data.position <= request.resource.data.duration + 5
+          && request.resource.data.updatedAt is timestamp;
+      }
+
+      // library/{seriesId}  { status, watched, updatedAt }
+      match /library/{seriesId} {
+        allow read, delete: if owner(uid);
+        allow create, update: if owner(uid)
+          && request.resource.data.keys().hasOnly(['status', 'watched', 'updatedAt'])
+          && request.resource.data.status in ['watching', 'planned', 'completed', 'paused', 'dropped']
+          && request.resource.data.watched is int
+          && request.resource.data.watched >= 0
+          && request.resource.data.updatedAt is timestamp;
+      }
+
+      // favourites/{seriesId}  { addedAt }
+      match /favourites/{seriesId} {
+        allow read, delete: if owner(uid);
+        allow create, update: if owner(uid)
+          && request.resource.data.keys().hasOnly(['addedAt'])
+          && request.resource.data.addedAt is timestamp;
+      }
+
+      // recent/{id}  { term, at } — the app keeps 6, rules only bound the size of each doc
+      match /recent/{id} {
+        allow read, delete: if owner(uid);
+        allow create, update: if owner(uid)
+          && request.resource.data.keys().hasOnly(['term', 'at'])
+          && shortString(request.resource.data.term, 200)
+          && request.resource.data.at is timestamp;
+      }
+
+      // notify/{key}  { title, ep?, at }
+      match /notify/{key} {
+        allow read, delete: if owner(uid);
+        allow create, update: if owner(uid)
+          && request.resource.data.keys().hasOnly(['title', 'ep', 'at'])
+          && shortString(request.resource.data.title, 500)
+          && (!('ep' in request.resource.data) || (request.resource.data.ep is int && request.resource.data.ep >= 0))
+          && request.resource.data.at is timestamp;
+      }
+
+      // any other sub-collection under users/{uid}: denied
+    }
+
+    // In-app import (Import page ↔ `npm run agent -w @ani/import` on the PC, which writes with the
+    // Admin SDK). The app reads the agent's heartbeat and scan, may only ask for a rescan, queue
+    // jobs for itself and request a cancel.
+    match /importAgent/{id} {
+      allow read: if allowed();
+      allow update: if allowed()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scanRequestedAt']);
+    }
+    match /importScan/{id} {
+      allow read: if allowed();
+    }
+    match /importJobs/{id} {
+      allow read: if allowed();
+      allow create: if allowed()
+        && request.resource.data.status == 'queued'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.sources is list
+        && request.resource.data.sources.size() > 0
+        && request.resource.data.sources.size() <= 500;
+      allow update: if allowed()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cancelRequested']);
+    }
+    // Manual AniList matches, picked on the Import page (read by the importer).
+    match /overrides/{seriesId} {
+      allow read, write: if allowed();
+    }
+
+    // importState, everything else: importer only.
+  }
+}

@@ -1,15 +1,16 @@
 {
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "version": 1,
+  "cli": {
+    "packageManager": "npm",
+    "schematicCollections": ["angular-eslint"],
+    "analytics": false
+  },
   "newProjectRoot": "projects",
   "projects": {
     "ani-stream": {
       "projectType": "application",
-      "schematics": {
-        "@schematics/angular:component": {
-          "type": "component"
-        }
-      },
+      "schematics": {},
       "root": "",
       "sourceRoot": "src",
       "prefix": "app",
@@ -18,38 +19,31 @@
           "builder": "@angular/build:application",
           "options": {
             "outputPath": "dist/ani-stream",
-            "index": "src/index.html",
             "browser": "src/main.ts",
-            "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
-            "assets": [
-              { "glob": "**/*", "input": "public", "ignore": ["**/.gitkeep"] }
-            ],
-            "styles": ["src/styles.css"],
-            "scripts": []
+            "allowedCommonJsDependencies": ["rvfc-polyfill", "throughput"],
+            "assets": [{ "glob": "**/*", "input": "public", "ignore": ["**/.gitkeep"] }],
+            "styles": ["src/styles.css"]
           },
           "configurations": {
             "production": {
               "budgets": [
-                { "type": "initial", "maximumWarning": "500kB", "maximumError": "1MB" },
-                { "type": "anyComponentStyle", "maximumWarning": "4kB", "maximumError": "8kB" }
+                { "type": "initial", "maximumWarning": "1.1MB", "maximumError": "1.5MB" },
+                { "type": "anyComponentStyle", "maximumWarning": "8kB", "maximumError": "16kB" }
               ],
-              "outputHashing": "all",
-              "fileReplacements": [
-                { "replace": "src/environments/environment.ts", "with": "src/environments/environment.prod.ts" }
-              ]
+              "outputHashing": "all"
             },
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true,
-              "namedChunks": true
+              "sourceMap": true
             }
           },
           "defaultConfiguration": "production"
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": { "proxyConfig": "proxy.conf.json" },
           "configurations": {
             "production": { "buildTarget": "ani-stream:build:production" },
             "development": { "buildTarget": "ani-stream:build:development" }
@@ -57,15 +51,16 @@
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:karma",
+          "builder": "@angular/build:unit-test",
           "options": {
-            "polyfills": ["zone.js", "zone.js/testing"],
             "tsConfig": "tsconfig.spec.json",
-            "assets": [
-              { "glob": "**/*", "input": "public", "ignore": ["**/.gitkeep"] }
-            ],
-            "styles": ["src/styles.css"],
-            "scripts": []
+            "runner": "vitest"
+          }
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": ["src/**/*.ts", "src/**/*.html", "packages/*/src/**/*.ts"]
           }
         }
       }

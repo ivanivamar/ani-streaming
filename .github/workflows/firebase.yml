@@ -1,0 +1,172 @@
+# ani.stream → Firebase (PLAN.md Step 7; ported from the music app's firebase.yml).
+#   web:       lint, unit tests, production build (npm run build → dist/ani-stream/browser)
+#   rules:     firestore.rules tests in the emulator → deploy rules + indexes
+#   functions: firebase/functions typecheck + tests → deploy the `api` function (sign-in helper)
+#   hosting:   deploys the build from `web`, after the function and rules (so a new /api route or
+#              rule exists before the page that needs it)
+# Each part only runs when its files changed (all of them on a manual run). Pull requests to
+# main run the checks and never deploy.
+#
+# Secret (repo → Settings → Secrets and variables → Actions):
+#   FIREBASE_SERVICE_ACCOUNT   JSON key of the deploy service account (README "Deploying"). Roles:
+#     Hosting:   Firebase Hosting Admin, Cloud Run Viewer, Cloud Functions Viewer, API Keys Viewer
+#     Rules:     Firebase Rules Admin, Cloud Datastore Index Admin
+#     Functions: Cloud Functions Admin, Cloud Run Admin, Service Account User,
+#                Secret Manager Viewer, Artifact Registry Administrator, Service Usage Consumer
+# The Firebase project id comes from .firebaserc.
+name: Firebase
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: firebase-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: 22
+  FIREBASE_TOOLS: firebase-tools@15
+  DEPLOY: ${{ github.event_name != 'pull_request' }}
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.web == 'true' }}
+      rules: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.rules == 'true' }}
+      functions: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.functions == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            shared: &shared
+              - 'firebase.json'
+              - '.firebaserc'
+              - '.github/workflows/firebase.yml'
+            web:
+              - *shared
+              - 'src/**'
+              - 'public/**'
+              - 'packages/**'
+              - 'scripts/**'
+              - 'angular.json'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'tsconfig*.json'
+              - 'eslint.config.js'
+            rules:
+              - *shared
+              - 'firestore.rules'
+              - 'firestore.indexes.json'
+              - 'tools/rules-tests/**'
+              - 'packages/contracts/**'
+            functions:
+              - *shared
+              - 'firebase/functions/**'
+
+  web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: dist/ani-stream/browser
+          retention-days: 7
+          if-no-files-found: error
+
+  rules:
+    needs: changes
+    if: needs.changes.outputs.rules == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      # the Firestore emulator is a Java app
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ hashFiles('package-lock.json') }}
+      - run: npm ci
+      - name: Rules tests (Firestore emulator)
+        run: npm run test:rules
+      - if: env.DEPLOY == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - name: Deploy rules + indexes
+        if: env.DEPLOY == 'true'
+        run: npx firebase deploy --only firestore:rules,firestore:indexes --non-interactive
+
+  functions:
+    needs: changes
+    if: needs.changes.outputs.functions == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: firebase/functions/package-lock.json
+      - name: Install function dependencies
+        run: npm --prefix firebase/functions ci
+      - name: Typecheck
+        run: npm --prefix firebase/functions run typecheck
+      - name: Tests
+        run: npm --prefix firebase/functions test
+      - if: env.DEPLOY == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      # predeploy (firebase.json) bundles src → lib with esbuild. --force lets the CLI set the
+      # Artifact Registry cleanup policy without asking.
+      - name: Deploy the api function
+        if: env.DEPLOY == 'true'
+        run: npx --yes ${{ env.FIREBASE_TOOLS }} deploy --only functions --non-interactive --force
+
+  hosting:
+    needs: [changes, web, rules, functions]
+    # after rules and the function when they ran; skipped ones don't block, failed ones do
+    if: >-
+      always() && github.event_name != 'pull_request' && needs.web.result == 'success' &&
+      needs.rules.result != 'failure' && needs.rules.result != 'cancelled' &&
+      needs.functions.result != 'failure' && needs.functions.result != 'cancelled'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: dist/ani-stream/browser
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - name: Deploy to Firebase Hosting
+        run: npx --yes ${{ env.FIREBASE_TOOLS }} deploy --only hosting --non-interactive --message "${{ github.sha }}"

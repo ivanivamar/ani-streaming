@@ -1,6 +1,6 @@
 # ani.stream — revival plan (rev. 3, Nov 3, 2026)
 
-**Status: plan only, no code written yet.** Replaces the allanime / ani-cli approach (blocked by
+**Status: Steps 0–6 done, Step 7 written (Nov 4, 2026); next Step 8.** Replaces the allanime / ani-cli approach (blocked by
 purpose-built anti-scraping, see `claude/known-issue-api-sources-cloudflare.md`) with a library
 Ivan owns: his own episodes, compressed with ffmpeg, stored on Google Drive, streamed with range
 requests. Same model as the music app (Material Music).
@@ -184,6 +184,16 @@ schema is defined once.
 - Replace the old README/`data-sources.md` with this plan's architecture.
 - **Check:** `ng build`, `ng lint`, `ng test` pass on the empty skeleton.
 
+**Done (Nov 3):** DDD skeleton with 5 contexts × 4 layers, `shared/{ui,kernel,infrastructure}`,
+`shell`; zoneless; lazy route per context with placeholder pages; `packages/contracts`
+(Firestore doc types + id helpers); `tools/import` placeholder; npm workspaces; Vitest via
+`@angular/build:unit-test`; ESLint (angular-eslint + `eslint-plugin-boundaries` with
+`checkAllOrigins`, so `domain`/`kernel`/`contracts` can't import npm packages); path aliases.
+Build, lint and 15 tests pass. Deviations: context routes live in `ui/<context>.routes.ts`
+(identity exports `identityPublicRoutes` outside the shell and `identityShellRoutes` for
+settings); `src/main.ts` is ignored by the boundaries rule; TS 6 has no `baseUrl`, so aliases
+are `./`-relative `paths`.
+
 ## Step 1 — Test encodes (encode plan, Phase 1a)
 - `tools/import` command `test-encode`: 2–3 sample episodes (dark / fast action / gradients).
   Samples so far: Attack on Titan S01E01 (BD HEVC) and Aoashi S01E01 (WEB x264).
@@ -196,6 +206,44 @@ schema is defined once.
   and for Aoashi also the `copy` result (remux only) to compare.
 - Ivan watches on PC (Chrome/Edge) and phone; picks codec, settings and bitrate ceiling.
 - **Output:** chosen settings written back into this plan.
+
+### Result (Nov 3, 2026) — done
+
+`npm run test-encode -w @ani/import` (5-min clips, first 5:00 of each episode):
+
+| Variant | AoT S01E01 (BD HEVC 10-bit, 12.1 Mb/s avg) | Aoashi S01E01 (WEB **H.264 10-bit**, 3.6 Mb/s) |
+| --- | --- | --- |
+| `nvenc-cq22` | 7.53 Mb/s · 61% | 3.67 Mb/s · 93% |
+| `nvenc-cq24` | 6.32 Mb/s · 52% | 2.85 Mb/s · 72% |
+| `nvenc-cq26` | 4.95 Mb/s · 40% | 2.19 Mb/s · 56% |
+| `x265-crf20` | 4.76 Mb/s · 39% (0.25× realtime) | 1.68 Mb/s · 43% (0.61× realtime) |
+| `copy` | 19.2 Mb/s (OP section; avg 12.1) | n/a (H.264 10-bit) |
+
+NVENC runs at ~6× realtime for every CQ (limited by CPU decode of the source, not the GPU),
+so a 24-min episode encodes in ~4 min. Ivan saw no difference between any of the variants on
+PC or phone, so the choice is driven by size, speed and streaming:
+
+**Chosen encode settings**
+```
+-c:v hevc_nvenc -preset p7 -tune hq -rc vbr -cq 26 -b:v 0 -maxrate 8M -bufsize 16M
+-b_ref_mode middle -spatial-aq 1 -temporal-aq 1 -rc-lookahead 32
+-pix_fmt p010le -profile:v main10 -g 48 -tag:v hvc1
+-c:a aac -b:a 192k -ac 2          (Japanese track only; stream copy if already AAC ≤ 2 ch)
+-movflags +faststart
+```
+- **CQ 26:** smallest NVENC level, about the size of the x265 reference on AoT, no visible loss.
+  ~2–5 Mb/s → roughly 400–900 MB per 24-min episode.
+- **Ceiling 8 Mb/s** (`-maxrate 8M -bufsize 16M`): CQ 26 averages well under it, so it only
+  trims rare spikes (the AoT OP); keeps phone streaming on mobile data and Drive seeks predictable.
+- **GOP 48** (~2 s keyframes) for quick seeks over Drive range requests. Was 240 (~10 s) until
+  Nov 3: Step 3 measured 400–1722 ms seeks on real Drive (decoding up to 10 s from the previous
+  keyframe). Applies to new imports only; existing episodes keep 240 unless re-imported with `--force`.
+- Note: current ffmpeg builds only accept `-spatial-aq` / `-temporal-aq` (hyphen), not underscores.
+
+**Copy rule for Step 2** (instead of re-encoding): copy the video only if it is H.264 8-bit
+4:2:0 or HEVC Main/Main 10 4:2:0, ≤ 1920×1080, **and** its average video bitrate ≤ 8 Mb/s.
+Everything else is encoded. Aoashi showed WEB releases can be **H.264 10-bit**, which browsers
+and phones can't hardware-decode, so bit depth must be checked, not just the codec.
 
 ## Step 2 — Importer (Phases 1a+, 1b, 1c)
 Node + TS script in `tools/import`, modelled on the music importer, using `firebase-admin`
@@ -215,6 +263,31 @@ Node + TS script in `tools/import`, modelled on the music importer, using `fireb
 6. Stops cleanly on Drive's 750 GB/day limit; resumes next run. `dry-run` and `import`.
 - **Check:** dry-run on the real folder, then import one full season and inspect Drive + Firestore.
 
+**Done (Nov 3):** `npm run dry-run|import -w @ani/import` — see `tools/import/README.md`.
+Checked on Ivan's PC: dry-run of the real folder (both samples matched AniList exactly: Aoashi
+134732, Attack on Titan 16498), Aoashi S01E01 imported to Drive `AniStream/` + Firestore (NVENC
+724 MB → 298 MB in 3:56), re-import with `--force` uploaded 0 bytes (same MD5). Only single
+sample episodes exist so far, so the "one full season" check happens with the first real season.
+Chapters: at most one OP (first half) and one ED (second half), song length 45–150 s, "Opening"/
+"Ending" beat "Intro"/"Credits" (AoT's 2:02 cold open is "Intro"; Aoashi E01 labels its closing
+song "OP" at 22:36, which stays untagged).
+- `importState` id = SHA-1 of file name + size (survives moves and another PC; mtime is stored but
+  not part of the key). A second file for an episode that is already imported is reported as
+  `duplicate` (`--replace` overwrites).
+- `seriesId` = slug of the title parsed from the file name. AniList season 1 needs an **exact**
+  title match (case/spaces/punctuation ignored, English/romaji/native/synonyms); seasons ≥ 2 follow
+  `SEQUEL` relations (TV/ONA). No confident match → series written without AniList data and
+  reported; `overrides/{seriesId} { anilistId, title?, seasons.sNN.anilistId }` fixes it.
+- Fonts on Drive are named `<name>.<md5-8>.<ext>` so two different fonts with one file name
+  never overwrite each other; same content is uploaded once per series.
+- Drive layout: `AniStream/series/<seriesId>/s01/e01.mp4|e01.en.ass|e01.en.signs.ass|e01.thumb.webp`,
+  `AniStream/series/<seriesId>/fonts/*`.
+- Upload sessions are saved in the work folder; Drive's daily limit (403 limit reasons, or repeated
+  `userRateLimitExceeded`), a local 740 GB/24 h budget, or Ctrl+C stop the run and keep the
+  work copy, so the next run resumes the upload at the last byte.
+- `--out <dir>` writes to a local `drive/` + `firestore/` JSON mirror (used to test everything
+  except the Google APIs; tested on synthetic files in the cloud session).
+
 ## Step 3 — Identity, Drive access, streaming
 - `identity`: Google Identity Services sign-in with Drive read-only scope (ported from the music
   app's `session.ts`/`drive.ts`); the sign-in helper function keeps the refresh token in a
@@ -230,6 +303,39 @@ Node + TS script in `tools/import`, modelled on the music importer, using `fireb
 - `catalog/infrastructure`: Firestore repositories for series/seasons/episodes.
 - **Check:** a Drive video plays and seeks instantly; catalogue loads from Firestore.
 
+**Done (Nov 3)** — deployed to myanime-streaming; sign-in, catalogue and Drive playback checked on the PC. Setup steps in README "Step 3 setup".
+- `firebase/functions` (`api`, europe-west1): `/api/auth/{exchange,refresh,logout,status}` (refresh
+  token in an HttpOnly `__session` cookie) and `/api/firebase/token` (Drive token → Firebase custom
+  token, uid = `g` + Drive permission id). Only these two handlers of the music app were ported.
+  Header `X-Ani: 1`. 5 handler tests (`npm run functions:test`).
+- `firebase.json` (Hosting `dist/ani-stream/browser`, `/api/**` → function, SPA rewrite, cache
+  headers), `.firebaserc` (myanime-streaming), `firestore.rules` (catalogue readable only by uids in
+  `config/access`; `config/access` readable only by listed uids; `users/{uid}/**` owner + allowlisted),
+  `firestore.indexes.json` (empty).
+- `identity`: domain (session status, token rules, allowlist), application (`SessionStore` with
+  signals, ports, `requireAccess` guard on the shell route), infrastructure (GIS popup, helper
+  client, Drive `about` profile, localStorage, custom-token Firebase sign-in, `config/access` check),
+  ui (functional sign-in page: sign in, expired, no-access with the uid to allow, errors).
+  Scope **drive.readonly**. Without the helper (plain `ng serve` without the proxy) it falls back
+  to the hourly token model, as in the music app.
+- `shared/infrastructure`: `APP_ENV` (filled in `src/app/app.env.ts`), Firebase providers
+  (Auth with IndexedDB persistence, Firestore with persistent multi-tab cache), `AccessTokenSource`,
+  `DriveClient`.
+- `playback`: `public/sw.js` (Drive range proxy at `/__drive/<fileId>?size=&type=` + app-shell
+  cache), `scripts/build-sw.mjs` fills its BUILD/PRECACHE/ASSETS after `ng build`, `DriveStreamBridge`
+  (registers the worker at boot, answers token requests with a renewed token), `PlaybackStore`,
+  a plain `<video>` watch page with a seek timer. Real player is Step 5.
+- `catalog`: Firestore repository + Timestamp mappers, `CatalogStore`, functional Home (series grid)
+  and Anime detail (episodes per season). Designed screens are Step 4.
+- `tools/import`: `npm run allow -w @ani/import -- <uid>` edits `config/access`.
+- `npm start` proxies `/api` to the deployed Hosting site (`proxy.conf.json`), so localhost uses
+  the real sign-in function.
+- Initial bundle budget raised to 1 MB warning / 1.5 MB error: the Firebase SDK is in the main
+  bundle (~906 kB raw, ~236 kB transferred).
+- Tested in the cloud: 38 app tests, lint (boundaries) clean, prod build; the worker was run in
+  Chromium against a fake Drive (metadata 112 ms, seeks 9–84 ms, 416 past the end, 401 → page told)
+  and the shell cache was checked offline.
+
 ## Step 4 — Rebuild the UI to design v3 (adapted)
 `shared/ui` design system (tokens, pill, segmented, dropdown, context menu, poster card), then
 `shell` (inset sidebar / bottom nav, Waves background, header search, page motion), then screens:
@@ -243,13 +349,104 @@ Node + TS script in `tools/import`, modelled on the music importer, using `fireb
 | Watch | playback | MP4 player. **Add CC button** (full / signs / off), skip OP/ED from chapters. |
 | Library | library | As designed. |
 | New releases | releases | AniList schedule; "not on allanime" → "not in your library". |
-| Import | — | **Dropped.** Importing happens only through the importer script. |
+| Import | importing | **Kept (Nov 4), desktop only:** the page drives an import agent on the PC (`npm run agent -w @ani/import`) through Firestore — scan of the folder, review/match, queue, live progress. Encoding stays on the PC. |
 | Downloads | playback | Android offline downloads only (Step 8); hidden on web. |
 | Settings | identity | Signal Forms. Playback prefs, Data; Downloads section only on Android. |
 
 Still to design: loading skeletons, player error, empty home.
 
+### Result (Nov 3, 2026 — written, not yet checked on the PC)
+
+- **shared/ui**: `design-system.css` (all v3 tokens + utility classes: buttons, pill, chip, genre,
+  skeleton, error card), `Icon` (v3 rounded paths), `Pill`, `Segmented` and `Toggle` (Signal Forms
+  controls), `Dropdown` (fixed menu, flips, closes on scroll/Esc), `ContextMenu` service + host,
+  `Poster` (AniList cover via `NgOptimizedImage`, gradient placeholder), `PosterCard`, `Avatar`,
+  `Logo`, `GoogleG`, `Motion` + `[appStagger]` (page enter, stagger, back direction, poster →
+  player grow, leave player, auth → app), `Viewport` signals (760px, landscape phone, touch).
+- **shell**: lazy-loaded; inset sidebar (236/72px, railed state in localStorage), inset panel with
+  Waves background, header search (`/`, recent searches, 5 suggestions, live query on /search),
+  mobile bottom nav + profile popover. Route `data.depth` drives motion direction (App root).
+- **Screens**: Sign in, Welcome (Subtitles + Autoplay replace Audio/Quality), Home, Search
+  (Status + Genre pills), Anime detail (seasons, watched strip, episode tiles with Drive thumbs
+  through the worker and durations), Watch (full-screen, outside the shell: custom chrome, touch
+  layout, landscape compact, episodes popup with season tabs, **CC menu**, **Skip opening/ending**
+  from chapters + optional auto-skip, keys space/k j l ←→ f n c s, autoplay next, error cards),
+  Library (tabs, sort, grid/list), New releases (AniList week grid, now line, scope, premieres,
+  notify), Settings (Signal Forms prefs, export JSON, clear history, delete account data).
+  Loading skeletons, empty home and the player error are designed in the same language.
+- **Data pulled forward from Steps 5/6** (the screens need it): `library` context
+  (`LibraryStore`, `ProgressTracker` with the 10 s / pause / seek / leave rule, Firestore
+  repository for progress, library, favourites, recent searches), `identity` `PrefsStore` +
+  `users/{uid}` profile (first sign-in → Welcome via `requireProfile`), `releases` context (AniList
+  GraphQL schedule + premieres, `users/{uid}/notify`). Still Step 5: JASSUB subtitle rendering (the
+  CC choice is stored and passed on), AniSkip fallback. Still Step 6: rules tests in the emulator.
+- Lint change: `ui` may import **any** context's `application` public API (Home shows catalogue +
+  library, the player reads progress); `ui` → other contexts' `ui` is still blocked.
+- Contracts: `UserPrefs` gains `resume` and `watchedThreshold`.
+- Budgets: component styles warn at 8 kB (watch page CSS is ~7 kB). Initial bundle 990 kB.
+- `withViewTransitions()` removed: page motion is Web Animations (the spec's exact timings).
+
+### Import page (Nov 4)
+
+- Browser can't run ffmpeg/NVENC, so the page drives **`npm run agent -w @ani/import`** on the PC
+  through Firestore: `importAgent/main` (heartbeat, rescan request), `importScan/{id}` (one doc
+  per file in the folder: parsed name, status, AniList match/candidates), `importJobs/{id}`
+  (queued by the page, run one at a time by the agent with the same code as `npm run import`,
+  live stage + %). Picking an AniList candidate writes `overrides/{seriesId}`.
+- New app context `importing` (`@importing/*`), route `/import` (desktop only, sidebar item).
+- Importer refactor: `openSession()` / `importFile()` / `scanSources()` exported from
+  `import.ts` (CLI unchanged), stage hooks, `progress.ts` sink fed by the ffmpeg runner and
+  resumable upload, `matchSeries` returns candidate media. `agent.test.ts` runs scan → job →
+  x265 import → rescan against an in-memory Firestore.
+- `firestore.rules`: read for allowlisted users; the app may create `queued` jobs, set
+  `cancelRequested` and `scanRequestedAt`, and write `overrides`.
+
 ## Step 5 — Player (web)
+
+**Subtitles done (Nov 4):** JASSUB 2.5.23 (`playback/infrastructure/jassub-renderer.ts`, port
+`SubtitleRendererPort`). The worker imports npm packages and the Angular builder doesn't follow
+`new Worker(new URL(…))` inside node_modules, so `scripts/build-jassub.mjs` (esbuild) bundles it
+into `public/jassub/` with the WASM + default font (gitignored; `npm start` / `npm run build` run
+it). The .ass file and the series fonts are downloaded on the page with `DriveClient` (a worker
+can't answer the streaming service worker's token request) and passed as `subContent` / `fonts`;
+`queryFonts: 'local'` for fonts the release didn't ship. CC menu switches tracks live.
+
+**AniSkip fallback + HEVC decode check — done (Nov 4, confirmed on Ivan's PC):**
+
+- **Skip OP/ED** = the episode's chapters, plus [AniSkip](https://api.aniskip.com) for whichever
+  of OP/ED the chapters don't mark (Aoashi S01E01 marks neither). Rules in
+  `playback/domain/skip-times.ts`: the season's AniList id (season doc, else the series for S1) →
+  MAL id via AniList `Media.idMal` (cached in localStorage `ani.malIds.v1`) →
+  `GET /v2/skip-times/{mal}/{episode}?types[]=op,ed,mixed-op,mixed-ed&episodeLength=…`. A result
+  is used only if its submitter's episode length is within **±12 s** of ours, it's 20–200 s long
+  and inside the video; clean `op`/`ed` beat `mixed-*`, then closest length. Adapter
+  `infrastructure/aniskip.client.ts` (port `SkipTimesPort`, 8 s timeout, 404 = none, session cache).
+  Any failure → chapters only. Auto-skip opening applies to AniSkip times too; the Skip button's
+  tooltip says where the times came from. No import or Firestore change.
+- **Decode check** (`domain/decode-support.ts`, adapter `infrastructure/media-capabilities.probe.ts`,
+  port `DecoderProbePort`): `MediaCapabilities.decodingInfo({ type: 'file' })` with the episode's
+  codec string (`hvc1.2.4.L120.B0` at 1080p, level from the height), size and bitrate;
+  `powerEfficient` = GPU. Browser from UA Client Hints (Edge before Chrome). Replaces the old
+  `MediaSource.isTypeSupported` check (we play progressive MP4, not MSE).
+  - Player: **unsupported** → card with browser-specific advice + "Try anyway" (the video isn't
+    loaded until then); **software** → dismissable notice (may stutter); errors use the same advice.
+  - **Settings → Playback → "Video decoding"**: `HEVC Main 10 · GPU · Edge` (mint), Software
+    (amber) or Not supported (red) with the advice under it — the check to run in both browsers.
+  - Edge needs Microsoft's **HEVC Video Extensions** (Media Foundation path, can fall back to
+    software); Chrome uses D3D11 directly, GPU only, nothing to install.
+- 79 app tests (16 new: domain rules, AniSkip client with mocked fetch, `PlaybackStore.skips`), lint clean,
+  prod build within budgets. Headless Chromium (no GPU) reports HEVC unsupported, as expected.
+
+**Check on the PC (both Chrome and Edge, `npm start`):**
+1. Settings → Video decoding shows `HEVC Main 10 · GPU · <browser>`.
+2. Play AoT S01E01; open `chrome://media-internals` / `edge://media-internals` → the player's
+   `kVideoDecoderName` is `D3D11VideoDecoder` (Chrome) or `VDAVideoDecoder` / `MediaFoundation…`
+   (Edge) — **not** `FFmpegVideoDecoder` / `Dav1d…`. `chrome://gpu` → "Decode hevc main 10" listed.
+3. Edge without the extension: the player shows the "can't play" card naming HEVC Video Extensions.
+4. Aoashi S01E01: a "Skip ending" (or opening) button appears at AniSkip's times, if AniSkip has
+   them for MAL 49784 E01 (unverified from the cloud: AniSkip/AniList hosts are blocked here).
+   DevTools → Network → `aniskip` shows the request.
+
 - `<video>` with Drive stream, JASSUB (deferred) with the series' fonts, chapter-based skip
   buttons (AniSkip fallback), autoplay next, keyboard shortcuts.
 - `ProgressTracker` writes every ~10 s and on pause / seek / leave / `visibilitychange`.
@@ -259,11 +456,74 @@ Still to design: loading skeletons, player error, empty home.
 - `library` context repositories for `users/{uid}/…`, export JSON / clear history / delete account.
 - `firestore.rules` + `firestore.indexes.json` in the repo; rules tested with the emulator.
 
+### Result (Nov 4)
+
+- Repositories were pulled forward in Step 4 (`FirestoreUserDataRepository`, `FirestoreUserProfile`,
+  `FirestoreNotifyRepository`). Step 6 changes:
+  - **Clear history** = `UserDataRepository.clearHistory(uid)`: queries `progress` (also docs this tab
+    never loaded), deletes them and sets `watched: 0` on library entries, 450 writes per batch.
+    Awaited and rejects on failure (before, errors were swallowed and Settings said "cleared");
+    memory cleared only after success. Settings shows the count.
+  - **Export JSON** reads fresh from Firestore (`LibraryStore.exportData()`, `ReleasesStore.exportNotify()`)
+    instead of the in-memory copy: `{ app, version: 1, exportedAt, account{uid,email,name}, prefs,
+    progress, library, favourites, recentSearches, notify }`, ISO dates. Button shows "Exporting…".
+  - **Delete account data** unchanged (identity: every `users/{uid}` sub-collection, then the doc,
+    then sign-out); now covered by a rules test. Data-section errors show under the Data section.
+- **Rules**: `users/{uid}/**` writes validated against the contracts — profile keys/types,
+  `createdAt` timestamp and immutable, prefs enums (`subtitles` full/signs/off, threshold
+  0.8/0.9/0.95); `progress` id `<slug>_sNNeNN`, `0 ≤ position ≤ duration + 5`, `0 < duration ≤ 24 h`;
+  `library.status` enum, `watched` int ≥ 0; `recent.term` 1–200 chars; `notify.title` 1–500, `ep`
+  int; all timestamps typed. Unknown sub-collections under a user denied. Rest unchanged.
+- **Indexes**: still no composite indexes; field overrides exclude never-queried nested fields
+  (episodes `video/audio/subs/chapters/source`, series `synopsis/fontFileIds`, importScan
+  `candidates/match`, importJobs `sources/labels/results`).
+- **Tests**: `tools/rules-tests` (`@ani/rules-tests`, `npm run test:rules`): `@firebase/rules-unit-testing`
+  6 + Vitest under `firebase emulators:exec` (project `demo-ani`, port 8085, emulator config in
+  `firebase.json`). 25 tests: allowlist, catalogue read-only, importState hidden, profile
+  create/update/shape, every user sub-collection's shape, cross-user access, a 450-delete batch
+  (the `get(config/access)` per write must stay under the rules call limit), delete-account flow,
+  Import page writes. `firebase-tools` is a devDependency so CI (Step 7) can run it.
+- Cloud checks: 82 app tests (3 new), lint clean, prod build, rules tests typecheck. **The rules
+  tests themselves have not run**: the sandbox can't download the emulator jar.
+- PC: install Java 21+, `npm install`, `npm run test:rules`; then `firebase deploy --only firestore`.
+- **Confirmed by Ivan (Nov 4): works on the PC.**
+
 ## Step 7 — Firebase Hosting + CI
 - `firebase.json` copied from the music app (cache headers, `/api/**` → function) + SPA rewrite;
   PWA manifest; in-app "new version · Reload" prompt.
 - `firebase.yml` workflow ported: on push to `main` → lint, test, build → deploy Hosting, rules
   and the function when it changed. Secret `FIREBASE_SERVICE_ACCOUNT`.
+
+### Result (Nov 4 — written, not yet run on GitHub)
+
+- **firebase.json** (already ported in Step 3, SPA rewrite + cache headers): Hosting `predeploy`
+  removed (CI deploys the build it tested; `npm run deploy` / `deploy:hosting` now build first).
+  Added: `nosniff` + `Referrer-Policy` on everything, `no-cache` for extensionless paths (SPA deep
+  links get index.html), `/jassub/**` no-cache (not hashed), `/icons/**` 1 day, manifest
+  Content-Type.
+- **PWA manifest** `public/manifest.webmanifest` (standalone, `#0a0b0d`) + icons
+  `public/icons/{icon-192,icon-512,maskable-512,apple-touch-icon}.png` (mint dot on dark, like the
+  favicon); `index.html` links them, theme-color, iOS meta.
+- **"New version · Reload"**: `shared/infrastructure/app-update.ts` (`AppUpdate`) watches the
+  worker registration that playback's `DriveStreamBridge` creates: waiting worker or a new one
+  reaching `installed` while a controller exists → `available()`. Checks `reg.update()` every
+  30 min and on tab focus (≥ 5 min since the last). Reload → `ani:skip-waiting` (already handled
+  by `sw.js`), reloads on `controllerchange` (4 s fallback); first install never prompts or
+  reloads. Toast `src/app/update-prompt.ts` in the root `App`, hidden on `/watch`, above the
+  bottom nav on mobile. 5 new tests (87 total).
+- **`.github/workflows/firebase.yml`**: jobs `changes` (paths-filter) → `web` (npm ci, lint, test,
+  build, upload `dist`), `rules` (Java 21, `npm run test:rules`, deploy rules + indexes),
+  `functions` (typecheck, tests, deploy) → `hosting` (deploys the uploaded build, after rules and
+  functions, never on a failure). PRs to `main` = checks only. Node 22, `firebase-tools@15`, auth
+  with `google-github-actions/auth@v2`. actionlint clean.
+- Checked in the cloud: lint, 87 tests, prod build (sw.js filled), functions typecheck + tests,
+  rules-tests typecheck. Update flow tested in Chromium against two builds: no prompt on first
+  load → `reg.update()` after the switch → toast → Reload → page runs the new build, toast gone;
+  manifest served with 3 icons.
+- **To do on GitHub / Google Cloud** (README "Deploying"): create the `github-deploy` service
+  account with the listed roles, add its JSON key as `FIREBASE_SERVICE_ACCOUNT`, merge
+  `revive-drive` into `main` (first deploy), check the Actions run. Watch: the `rules` job is the
+  first real run of the emulator tests in CI.
 
 ## Step 8 — Android app + GitHub Action
 - Capacitor 8 wraps the Angular build (app id e.g. `com.ivan.anistream`).
@@ -292,7 +552,7 @@ Steps 3–4 can start with a few hand-written Firestore docs and one test MP4 wh
 - **Firebase project: `myanime-streaming`** (new project, not `my-streaming-969f8`).
 - **GPU: RTX 3060 → `hevc_nvenc`** (10-bit, B-frames). No AV1 encode on this card.
   ffmpeg on Windows: a full build with NVENC (`winget install Gyan.FFmpeg`).
-- **No import status page**; the Import screen is dropped.
+- ~~No import status page; the Import screen is dropped.~~ **Nov 4: the Import page is back**, driving a PC import agent through Firestore (see Step 4).
 - **Originals**: no folder structure yet. Samples in `C:\Users\ivani\Videos\Anime`:
   - `[LostYears] Aoashi - S01E01 (WEB 1080p x264 E-AC-3 AAC) [720C6417].mkv` — 724 MB, WEB, H.264.
     If 8-bit and ≤ ceiling bitrate it's a **copy** candidate (video remuxed, audio → AAC).

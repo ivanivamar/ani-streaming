@@ -1,55 +1,51 @@
 # Data sources
 
-## ani-cli (pystardust/ani-cli, scrapes allanime)
+Replaces the old allanime / AniList-at-runtime contract. The app has **no API server**: it reads
+Firestore directly and streams files from Google Drive. Types live in
+[`packages/contracts`](packages/contracts/src/firestore.ts).
 
-Everything the app can get from ani-cli:
+## Firestore (`myanime-streaming`)
 
-| Data | Available | Notes |
-| --- | --- | --- |
-| Search by query | yes | returns entry titles + ids |
-| Episode count per entry | yes | numbers only |
-| Sub / dub | yes | `--dub` flag; without it always subbed. Dub language is not selectable. |
-| Quality | yes | `-q best\|worst\|360\|480\|720\|1080` |
-| Specific episode / range | yes | `-e`, `-r` |
-| Continue from history | yes | `-c`; history file on disk |
-| Download | yes | `-d`, dir via `ANI_CLI_DOWNLOAD_DIR` |
+```
+series/{seriesId}                         catalogue entry + AniList metadata, searchTokens[]
+series/{seriesId}/seasons/{sNN}           season metadata
+series/{seriesId}/episodes/{sNNeNN}       video/audio/subs/chapters + Drive file ids
+importState/{sourceHash}                  importer re-run tracking
+overrides/{seriesId}                      manual AniList match fixes
+users/{uid}                               profile + prefs
+users/{uid}/library/{seriesId}            status, watched
+users/{uid}/favourites/{seriesId}
+users/{uid}/progress/{seriesId}_{sNNeNN}  position, duration
+users/{uid}/recent/{id}                   last 6 searches
+users/{uid}/notify/{key}                  release notifications
+config/access                             allowedUids[]
+```
 
-Not available — do not design around these:
+- Catalogue (`series`, `seasons`, `episodes`, `importState`, `overrides`) is written only by
+  `tools/import` with the Admin SDK and readable only by uids in `config/access`.
+- `users/{uid}/**` is readable and writable only by that uid (and only while allowlisted).
+- uid = `g` + the Google Drive permission id, minted by `/api/firebase/token`. Rules:
+  [`firestore.rules`](firestore.rules). Add a uid with `npm run allow -w @ani/import -- <uid>`.
+- Ids: `seriesId` is a title slug (`attack-on-titan`), seasons `s01`, episodes `s01e01`
+  (`toSeriesId`, `toSeasonId`, `toEpisodeId` in `@ani/contracts`).
 
-- **Provider selection.** Removed from ani-cli (`-r` was reused for episode ranges). It scrapes allanime only.
-- **Subtitle tracks.** Subs are burned into the video (hardsub). No language list, no CC on/off, no size/offset control.
-- **Metadata**: cover art, synopsis, genres, year, status, episode titles, thumbnails, durations.
-- **Seasons as a grouping.** allanime lists each season as its own search entry ("Attack on Titan", "Attack on Titan Season 2"). The season tabs in the design are a client-side grouping over sibling entries.
+## Google Drive (`AniStream/`)
 
-## AniList / Jikan — required for metadata
+Only binary or large files Firestore can't hold:
 
-The design shows cover art, synopsis, genres, year and status. None of that comes from ani-cli, so a metadata API is needed:
+```
+AniStream/series/<seriesId>/fonts/*.ttf|otf
+AniStream/series/<seriesId>/s01/e01.mp4          HEVC 10-bit / AAC, faststart
+AniStream/series/<seriesId>/s01/e01.en.ass       soft subtitles
+AniStream/series/<seriesId>/s01/e01.thumb.webp
+```
 
-- **AniList GraphQL** (`https://graphql.anilist.co`) — no key, generous rate limit, `Media(search:, type: ANIME)` gives `coverImage`, `bannerImage`, `description`, `genres`, `seasonYear`, `status`, `relations` (useful for grouping seasons into the tabs).
-- **Jikan** (`https://api.jikan.moe/v4`, MyAnimeList) — no key, rate-limited; `/anime?q=` gives equivalent fields plus `/anime/{id}/episodes` for episode titles.
+The app streams `e01.mp4` through its service worker (`public/sw.js`): `<video src>` points at
+`/__drive/<fileId>?size=<bytes>&type=video/mp4`, and the worker forwards each range request to
+`files/<fileId>?alt=media` with the signed-in user's Drive read-only token, asked from the page per
+request. Seeking is a new range request.
 
-Suggested flow: ani-cli entry title → fuzzy match against AniList → cache the metadata document in Firestore keyed by the ani-cli entry id, so matching runs once per title.
+## AniList
 
-Season tabs: use AniList `relations` (PREQUEL / SEQUEL edges) to link ani-cli entries of the same franchise, or fall back to string matching on the base title.
-
-## Firestore (project `my-streaming-969f8`)
-
-Owned entirely by the app, not ani-cli: user profile, favourites, recently searched, watch progress per episode.
-
-Progress is keyed `animeId|season|episode → 0..1` (mirrored in the prototype's `state.progress`).
-Suggested doc: `users/{uid}/progress/{entryId_episode}` with `{ position, duration, updatedAt }`.
-An episode counts as watched at ≥ 0.98; the anime page's primary button resumes the most recent
-unfinished episode.
-
-## Auth (Firebase Authentication)
-
-Private single-user instance: email + password only, plus `displayName` set via
-`updateProfile()` right after `createUserWithEmailAndPassword`. No providers, no reset flow in
-the design. Lock Firestore rules to the single uid, and consider disabling sign-up in the Firebase
-console once the account exists.
-
-## Error state
-
-The search screen has a dedicated "Source unavailable" state, distinct from "no results" —
-ani-cli failing to reach allanime is an upstream problem, not a bad query. Toggle it in the
-prototype via the `sourceState` tweak.
+Fetched by the importer (metadata stored in `series` / `seasons`) and by the `releases`
+context at runtime (airing schedule). Posters and banners use AniList CDN URLs directly.
