@@ -6,6 +6,7 @@ import {
 import { PreloadAllModules, provideRouter, withComponentInputBinding, withInMemoryScrolling, withPreloading } from '@angular/router';
 import { provideCatalog } from '@catalog/infrastructure';
 import { provideIdentity } from '@identity/infrastructure';
+import { provideImporting } from '@importing/infrastructure';
 import { provideLibrary } from '@library/infrastructure';
 import { provideReleases } from '@releases/infrastructure';
 import { providePlayback } from '@playback/infrastructure';
@@ -34,5 +35,6 @@ export const appConfig: ApplicationConfig = {
     providePlayback(),
     provideLibrary(),
     provideReleases(),
+    provideImporting(),
   ],
 };

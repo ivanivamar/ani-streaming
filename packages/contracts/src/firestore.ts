@@ -22,6 +22,9 @@ export const COLLECTIONS = {
   recent: 'recent',
   notify: 'notify',
   config: 'config',
+  importAgent: 'importAgent',
+  importScan: 'importScan',
+  importJobs: 'importJobs',
 } as const;
 
 export type SeriesStatus = 'FINISHED' | 'RELEASING' | 'NOT_YET_RELEASED' | 'CANCELLED' | 'HIATUS';
@@ -198,4 +201,91 @@ export interface NotifyDoc {
 /** `config/access` */
 export interface AccessConfigDoc {
   allowedUids: string[];
+}
+
+// ---------------------------------------------------------------------------------------------
+// In-app import (the app's Import page drives `npm run agent -w @ani/import` on the PC)
+// ---------------------------------------------------------------------------------------------
+
+/** The one agent document: `importAgent/main`. */
+export const IMPORT_AGENT_ID = 'main';
+
+/** An agent counts as online while its heartbeat is younger than this. */
+export const IMPORT_AGENT_STALE_MS = 75_000;
+
+/** `importAgent/main` — written by the agent (heartbeat); the app may only set `scanRequestedAt`. */
+export interface ImportAgentDoc {
+  host: string;
+  /** folder the agent scans, e.g. C:\Users\ivani\Videos\Anime */
+  sourceDir: string;
+  state: 'idle' | 'scanning' | 'importing' | 'stopped';
+  encoder: string;
+  lastSeen: FirestoreTime;
+  startedAt: FirestoreTime;
+  lastScanAt: FirestoreTime | null;
+  /** set by the app: "scan again" */
+  scanRequestedAt: FirestoreTime | null;
+  /** bytes uploaded to Drive in the last 24 h / the budget */
+  uploadedToday: number;
+  dailyLimit: number;
+  error: string | null;
+}
+
+export interface AniListPick {
+  anilistId: number;
+  title: string;
+  posterUrl: string | null;
+  year: number | null;
+  format: string | null;
+}
+
+export type ImportScanStatus = 'new' | 'imported' | 'pending' | 'failed' | 'duplicate' | 'unparseable';
+
+/** `importScan/{sourceHash}` — one per video file in the agent's folder, written by the agent. */
+export interface ImportScanDoc {
+  fileName: string;
+  /** path relative to the source folder */
+  relPath: string;
+  size: number;
+  mtime: FirestoreTime;
+  parsed: { title: string; season: number; episode: number; group: string; quality: string; seasonAssumed: boolean } | null;
+  parseError: string | null;
+  seriesId: SeriesId | null;
+  episodeId: EpisodeId | null;
+  status: ImportScanStatus;
+  /** last error (failed) or why it's a duplicate */
+  error: string | null;
+  /** the series already exists in the catalogue */
+  inLibrary: boolean;
+  match: AniListPick | null;
+  matchProblem: string | null;
+  candidates: AniListPick[];
+  scannedAt: FirestoreTime;
+}
+
+export type ImportJobStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled';
+
+export type ImportJobStage = 'waiting' | 'probe' | 'encode' | 'extract' | 'upload' | 'firestore';
+
+/** `importJobs/{id}` — created by the app (status `queued`), run and updated by the agent. */
+export interface ImportJobDoc {
+  /** `importScan` ids, in order */
+  sources: string[];
+  /** display names, same order */
+  labels: string[];
+  createdAt: FirestoreTime;
+  createdBy: string;
+  status: ImportJobStatus;
+  forceEncode: boolean;
+  replace: boolean;
+  /** set by the app; the agent stops after the current episode */
+  cancelRequested: boolean;
+  /** the episode being probed / encoded */
+  current: { source: string; label: string; stage: ImportJobStage; fraction: number } | null;
+  /** the episode being uploaded meanwhile (encode and upload overlap) */
+  uploading?: { source: string; label: string; stage: ImportJobStage; fraction: number; bytesPerSec: number } | null;
+  results: Record<string, { outcome: string; detail: string | null }>;
+  startedAt: FirestoreTime | null;
+  finishedAt: FirestoreTime | null;
+  error: string | null;
 }

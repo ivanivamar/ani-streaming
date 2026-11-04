@@ -16,6 +16,38 @@ npm test -w @ani/import
 npm run typecheck -w @ani/import
 ```
 
+## Import agent — the app's Import page
+
+```cmd
+npm run agent -w @ani/import
+npm run agent -w @ani/import -- --src D:\Anime
+npm run agent -w @ani/import -- --encoder x265
+```
+
+Runs until **Ctrl+C** (a running episode finishes first; Ctrl+C twice quits at once, the upload
+resumes next time). It needs the same `secrets/` as `import` and talks to the app only through
+Firestore:
+
+- `importAgent/main` — heartbeat every 20 s: PC name, folder, idle / scanning / importing, upload
+  budget. The page shows "agent offline" when it's older than 75 s. The page's **Rescan** sets
+  `scanRequestedAt`.
+- `importScan/{id}` — one doc per video file in the folder (id = the `importState` id, file name +
+  size): parsed name, status (new / imported / pending / failed / duplicate / unparseable), AniList
+  match or candidates. No probing, so a scan is quick. Rescanned at start, on request, after each
+  job and every 10 minutes; docs for files that are gone are deleted.
+- `importJobs/{id}` — created by the page (`status: queued`, list of scan ids). The agent claims
+  one at a time, runs each episode exactly like `npm run import` (same probe/decide/encode/
+  verify/upload/Firestore code), and writes `current` (stage + %), `results` and the final status.
+  **Stop after this one** on the page sets `cancelRequested`.
+- Picking an AniList candidate on the page writes `overrides/{seriesId}.anilistId` and asks for a
+  rescan.
+
+Files must be in the agent's folder: the browser can't hand file contents to the PC, so dropping
+files on the page only selects the scanned files with the same name and size.
+
+The Firestore rules for these collections are in `firestore.rules` (deploy them once:
+`firebase deploy --only firestore:rules`).
+
 ## Step 2 — `dry-run` / `import`
 
 ```cmd
@@ -49,6 +81,12 @@ no path = that whole folder. **One episode at a time:**
    there with the same MD5 are reused, so a re-run uploads nothing twice.
 6. **Firestore**: `series`, `seasons`, `episodes`, `importState` (+ counts), AniList metadata.
    Then the work copy is removed. Originals are only read.
+
+**Encode and upload overlap**: while one episode uploads, the next one is probed and encoded
+(at most one upload plus one encoded episode waiting, so `tmp/import-work` holds two episodes at
+most). Uploads use 256 MiB chunks. Each episode logs its upload speed and the summary shows the
+average — that number is your connection's real upload rate to Drive; if it's well below what a
+speed test shows, the single connection is the limit and parallel uploads would help (not built yet).
 
 Re-runs skip sources whose `importState` is `done` (key: file name + size). Drive's 750 GB/day
 limit, the local budget (`--daily-limit`, default 740G, tracked in

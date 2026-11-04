@@ -43,7 +43,7 @@
       <div class="row">
         <div class="text">
           <div class="label">Skip openings automatically</div>
-          <div class="desc">Uses the episode's chapters. Endings always get a Skip button instead.</div>
+          <div class="desc">Uses the episode's chapters, or AniSkip's community times when the chapters don't mark the opening. Endings always get a Skip button instead.</div>
         </div>
         <app-toggle [formField]="f.autoSkipIntro" label="Skip openings automatically" />
       </div>
@@ -60,6 +60,13 @@
           <div class="desc">How far into an episode it counts as watched.</div>
         </div>
         <app-segmented [formField]="f.watchedThreshold" [options]="thresholdOptions" tone="inset" size="sm" aria-labelledby="thr" />
+      </div>
+      <div class="row">
+        <div class="text">
+          <div class="label">Video decoding</div>
+          <div class="desc">{{ (decode.hasValue() ? decode.value().advice : null) ?? 'Episodes are HEVC 10-bit. This browser decodes them on the GPU.' }}</div>
+        </div>
+        <span class="decode-chip" [attr.data-support]="decode.hasValue() ? decode.value().support : 'unknown'">{{ decodeLine() }}</span>
       </div>
     </div>
     @if (saveError(); as e) {

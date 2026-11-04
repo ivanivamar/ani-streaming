@@ -1,6 +1,6 @@
 @let p = playable.value();
 
-@if (p?.src; as src) {
+@if (decodeBlocked() ? null : p?.src; as src) {
   <video
     #video
     [src]="src"
@@ -21,7 +21,7 @@
 }
 <button type="button" class="surface" aria-label="Play / pause" (click)="togglePlay()" (dblclick)="toggleFs()"></button>
 
-@if (playable.isLoading() || (p?.src && waiting() && !videoError())) {
+@if (playable.isLoading() || (p?.src && waiting() && !videoError() && !(decodeReport()?.support === 'unsupported' && !tryAnyway()))) {
   <div class="spin" aria-label="Loading"><span></span></div>
 }
 
@@ -45,6 +45,15 @@
     <h3>Streaming is off on this page</h3>
     <p>Playback needs the app's service worker. Use Chrome or Edge on https:// (or localhost) and reload once.</p>
     <button type="button" class="btn btn-outline btn-sm" (click)="leave()">Back</button>
+  </div>
+} @else if (decodeReport()?.support === 'unsupported' && !tryAnyway()) {
+  <div class="error-card fatal" role="alert">
+    <h3>{{ browserName[decodeReport()!.browser] }} can't play {{ decodeReport()!.label }}</h3>
+    <p>{{ decodeReport()!.advice }}</p>
+    <div class="row">
+      <button type="button" class="btn btn-primary btn-sm" (click)="tryAnyway.set(true)">Try anyway</button>
+      <button type="button" class="btn btn-outline btn-sm" (click)="leave()">Back to the series</button>
+    </div>
   </div>
 } @else if (videoError(); as err) {
   <div class="error-card fatal" role="alert">
@@ -83,8 +92,16 @@
   </div>
 }
 
+@if (subError(); as e) {
+  <div class="sub-error chrome" role="status">{{ e }}<button type="button" aria-label="Dismiss" (click)="subError.set(null)"><app-icon name="close" [size]="11" [stroke]="2.2" /></button></div>
+}
+
+@if (decodeReport()?.support === 'software' && !decodeNoticeHidden() && !videoError()) {
+  <div class="sub-error chrome" role="status" style="top: 124px; color: #ffd9a8; border-color: rgba(255, 200, 120, 0.3)">{{ decodeReport()!.advice }}<button type="button" aria-label="Dismiss" (click)="decodeNoticeHidden.set(true)"><app-icon name="close" [size]="11" [stroke]="2.2" /></button></div>
+}
+
 @if (skipChapter(); as ch) {
-  <button type="button" class="skip-chapter" (click)="skipNow()">
+  <button type="button" class="skip-chapter" [title]="ch.source === 'aniskip' ? 'Times from AniSkip' : 'From the episode chapters'" (click)="skipNow()">
     {{ ch.kind === 'op' ? 'Skip opening' : 'Skip ending' }}<app-icon name="skip" [size]="15" [stroke]="1.8" />
   </button>
 }
@@ -147,6 +164,9 @@
       @if (ccOpen()) {
         <div class="cc-menu" role="menu">
           <div class="eyebrow">Subtitles</div>
+          @if (ccModes().length === 1) {
+            <div class="cc-none">This episode was imported without subtitle tracks.</div>
+          }
           @for (m of ccModes(); track m) {
             <button type="button" role="menuitemradio" [attr.aria-checked]="cc() === m" (click)="setCc(m)">
               <span>{{ ccLabel[m] }}</span>

@@ -6,8 +6,9 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { CatalogRepository, type Episode, type Series } from '@catalog/application';
 import { SessionStore, UserProfilePort, type AccessGate, type UserDoc } from '@identity/application';
 import { UserDataRepository, type UserData } from '@library/application';
-import { VideoSourcePort } from '@playback/application';
+import { DecoderProbePort, SkipTimesPort, SubtitleRendererPort, VideoSourcePort } from '@playback/application';
 import { NotifyRepository, SchedulePort } from '@releases/application';
+import { ImportGateway, type ScanEntry } from '@importing/application';
 import { App } from './app';
 import { routes } from './app.routes';
 
@@ -83,6 +84,16 @@ class FakeSchedule extends SchedulePort {
   premieres = async () => [];
 }
 
+class FakeImports extends ImportGateway {
+  watchAgent = (cb: (a: null) => void) => (cb(null), () => undefined);
+  watchScan = (cb: (s: ScanEntry[]) => void) => (cb([]), () => undefined);
+  watchJobs = (cb: (j: never[]) => void) => (cb([]), () => undefined);
+  requestScan = async () => undefined;
+  createJob = async () => 'job';
+  cancelJob = async () => undefined;
+  setOverride = async () => undefined;
+}
+
 class FakeNotify extends NotifyRepository {
   list = async () => [];
   set = async () => undefined;
@@ -115,10 +126,17 @@ function configure(gate: AccessGate, firstSignIn = false) {
       { provide: SessionStore, useValue: fakeSession(gate) },
       { provide: CatalogRepository, useClass: FakeCatalog },
       { provide: VideoSourcePort, useClass: FakeVideoSource },
+      { provide: SubtitleRendererPort, useValue: { open: () => ({ show: async () => undefined, destroy: () => undefined }) } },
+      { provide: SkipTimesPort, useValue: { find: async () => [] } },
+      {
+        provide: DecoderProbePort,
+        useValue: { probe: async () => ({ support: 'hardware', browser: 'chrome', windows: true, label: 'HEVC Main 10', advice: null }) },
+      },
       { provide: UserProfilePort, useClass: FakeProfiles },
       { provide: UserDataRepository, useClass: FakeUserData },
       { provide: SchedulePort, useClass: FakeSchedule },
       { provide: NotifyRepository, useClass: FakeNotify },
+      { provide: ImportGateway, useClass: FakeImports },
     ],
   });
 }
@@ -150,6 +168,7 @@ describe('App', () => {
       ['/library', 'Library'],
       ['/releases', 'New releases'],
       ['/settings', 'Settings'],
+      ['/import', 'Import'],
     ])('routes %s to "%s"', async (url, heading) => {
       const harness = await RouterTestingHarness.create();
       await harness.navigateByUrl(url);

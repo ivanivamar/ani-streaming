@@ -34,6 +34,33 @@ service cloud.firestore {
       allow read, write: if allowed() && request.auth.uid == uid;
     }
 
-    // importState, overrides, everything else: importer only.
+    // In-app import (Import page ↔ `npm run agent -w @ani/import` on the PC, which writes with the
+    // Admin SDK). The app reads the agent's heartbeat and scan, may only ask for a rescan, queue
+    // jobs for itself and request a cancel.
+    match /importAgent/{id} {
+      allow read: if allowed();
+      allow update: if allowed()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scanRequestedAt']);
+    }
+    match /importScan/{id} {
+      allow read: if allowed();
+    }
+    match /importJobs/{id} {
+      allow read: if allowed();
+      allow create: if allowed()
+        && request.resource.data.status == 'queued'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.sources is list
+        && request.resource.data.sources.size() > 0
+        && request.resource.data.sources.size() <= 500;
+      allow update: if allowed()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cancelRequested']);
+    }
+    // Manual AniList matches, picked on the Import page (read by the importer).
+    match /overrides/{seriesId} {
+      allow read, write: if allowed();
+    }
+
+    // importState, everything else: importer only.
   }
 }

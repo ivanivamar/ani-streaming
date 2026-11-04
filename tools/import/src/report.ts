@@ -26,6 +26,8 @@ export interface FileEntry {
   sourceBytes?: number;
   outputBytes?: number;
   uploadedBytes?: number;
+  /** time spent uploading this episode */
+  uploadSeconds?: number;
   seconds?: number;
 }
 
@@ -71,6 +73,12 @@ export class Report {
     this.log(`${this.command}: ${parts.join(', ') || 'nothing to do'}`);
     if (this.count('imported')) {
       this.log(`  source ${gb(sum('sourceBytes'))} → output ${gb(sum('outputBytes'))}, uploaded ${gb(sum('uploadedBytes'))}`);
+      const secs = this.entries.reduce((s, e) => s + (e.outcome === 'imported' ? (e.uploadSeconds ?? 0) : 0), 0);
+      if (secs > 1 && sum('uploadedBytes') > 0) {
+        this.log(`  upload speed ${((sum('uploadedBytes') * 8) / secs / 1e6).toFixed(1)} Mb/s on average (${(sum('uploadedBytes') / secs / 1e6).toFixed(1)} MB/s)`);
+      }
+      const wall = (Date.now() - this.started.getTime()) / 1000;
+      this.log(`  total time ${Math.floor(wall / 60)}:${String(Math.floor(wall % 60)).padStart(2, '0')} (encodes overlap uploads)`);
     }
     for (const l of extra) this.log(l);
 

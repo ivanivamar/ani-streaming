@@ -9,8 +9,8 @@
   ],
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build && node scripts/build-sw.mjs",
+    "start": "node scripts/build-jassub.mjs && ng serve",
+    "build": "node scripts/build-jassub.mjs && ng build && node scripts/build-sw.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test --watch=false",
     "test:watch": "ng test",
@@ -27,6 +27,7 @@
     "@angular/platform-browser": "^22.2.0",
     "@angular/router": "^22.2.0",
     "firebase": "^13.2.0",
+    "jassub": "2.5.23",
     "rxjs": "~7.8.0",
     "tslib": "^2.6.0"
   },
@@ -38,6 +39,7 @@
     "angular-eslint": "^22.6.0",
     "eslint": "^10.14.0",
     "eslint-import-resolver-typescript": "^4.4.0",
+    "esbuild": "0.28.2",
     "eslint-plugin-boundaries": "^7.4.1",
     "jsdom": "^30.0.0",
     "typescript": "~6.0.2",

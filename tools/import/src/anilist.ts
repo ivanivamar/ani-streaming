@@ -92,7 +92,7 @@ const SEASON_FORMATS = new Set(['TV', 'TV_SHORT', 'ONA']);
 
 export type MatchResult =
   | { ok: true; media: Media; note: string }
-  | { ok: false; reason: string; candidates: string[] };
+  | { ok: false; reason: string; candidates: string[]; candidateMedia: Media[] };
 
 export function describeMedia(m: Media): string {
   return `${m.title.english ?? m.title.romaji} (${m.format ?? '?'}, ${m.seasonYear ?? m.startDate?.year ?? '?'}, id ${m.id})`;
@@ -116,9 +116,9 @@ export async function matchSeries(title: string): Promise<MatchResult> {
     if (sorted.slice(1).every((m) => sequels.has(m.id))) {
       return { ok: true, media: first, note: `AniList: ${describeMedia(first)} (earliest of ${pool.length} with this title)` };
     }
-    return { ok: false, reason: `${pool.length} AniList entries have this exact title`, candidates: pool.map(describeMedia) };
+    return { ok: false, reason: `${pool.length} AniList entries have this exact title`, candidates: pool.map(describeMedia), candidateMedia: pool };
   }
-  return { ok: false, reason: 'no AniList entry with this exact title', candidates };
+  return { ok: false, reason: 'no AniList entry with this exact title', candidates, candidateMedia: results.slice(0, 5) };
 }
 
 /** Follows SEQUEL relations (TV/ONA only) `season - 1` times from the season 1 entry. */

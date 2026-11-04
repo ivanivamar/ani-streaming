@@ -42,7 +42,7 @@ import { verifyVideo, writeVideo, type VerifiedVideo } from './transcode.ts';
 // Arguments
 // ---------------------------------------------------------------------------------------------
 
-interface Options {
+export interface Options {
   dryRun: boolean;
   inputs: string[];
   out?: string;
@@ -66,7 +66,7 @@ function parseSize(s: string): number {
   return Number(m[1]) * mul;
 }
 
-function options(argv: string[], dryRun: boolean): Options {
+export function options(argv: string[], dryRun: boolean): Options {
   const { values, positionals } = parseArgs({
     args: argv,
     allowPositionals: true,
@@ -165,16 +165,18 @@ function searchTokens(...titles: Array<string | null | undefined>): string[] {
 // Series / season metadata
 // ---------------------------------------------------------------------------------------------
 
-interface SeriesMeta {
+export interface SeriesMeta {
   seriesId: SeriesId;
   override: OverrideDoc | null;
   existing: SeriesDoc | null;
   media: Media | null;
   notes: string[];
   matchProblem: string | null;
+  /** AniList entries to pick from when there is no exact match (Import page) */
+  candidates: Media[];
 }
 
-class Metadata {
+export class Metadata {
   private readonly series = new Map<string, Promise<SeriesMeta>>();
   private readonly seasons = new Map<string, Promise<{ media: Media | null; note: string }>>();
   /** Notes already printed (series/season notes are shown once). */
@@ -203,7 +205,7 @@ class Metadata {
 
   private async load(seriesId: SeriesId, parsedTitle: string): Promise<SeriesMeta> {
     const [override, existing] = await Promise.all([this.catalog.getOverride(seriesId), this.catalog.getSeries(seriesId)]);
-    const meta: SeriesMeta = { seriesId, override, existing, media: null, notes: [], matchProblem: null };
+    const meta: SeriesMeta = { seriesId, override, existing, media: null, notes: [], matchProblem: null, candidates: [] };
     if (!this.opts.anilist) {
       meta.notes.push('AniList skipped (--no-anilist)');
       return meta;
@@ -222,6 +224,7 @@ class Metadata {
           meta.notes.push(m.note);
         } else {
           meta.matchProblem = `${m.reason}${m.candidates.length ? `; candidates: ${m.candidates.join(' | ')}` : ''}`;
+          meta.candidates = m.candidateMedia;
           meta.notes.push(`AniList: ${meta.matchProblem} — set overrides/${seriesId} { anilistId } to fix`);
         }
       }
@@ -326,12 +329,19 @@ function describePlan(r: Report, src: Source, d: Decision, subs: SubPlan[], font
 // Main
 // ---------------------------------------------------------------------------------------------
 
-export async function runImport(argv: string[], dryRun: boolean): Promise<void> {
-  const opts = options(argv, dryRun);
-  const report = new Report(dryRun ? 'dry-run' : 'import');
-  report.log(`ani.stream ${report.command}${opts.out ? ' (local test target)' : ''}`);
-  report.log(`  source: ${opts.inputs.join(', ')}`);
+/** Everything one import run works with (the CLI makes one per run, the agent one per job). */
+export interface ImportSession {
+  opts: Options;
+  report: Report;
+  catalog: Catalog;
+  store: Store | null;
+  metadata: Metadata;
+  budget: UploadBudget;
+}
 
+/** Checks ffmpeg, opens Firestore/Drive (or the `--out` folder) and the upload budget. */
+export async function openSession(opts: Options, report: Report): Promise<ImportSession> {
+  const dryRun = opts.dryRun;
   // ffmpeg capabilities
   const encoders = await listEncoders().catch((e: Error) => {
     throw new Error(`${e.message}\nInstall ffmpeg with NVENC (winget install Gyan.FFmpeg) or set FFMPEG_PATH.`);
@@ -361,6 +371,121 @@ export async function runImport(argv: string[], dryRun: boolean): Promise<void> 
 
   const budget = await new UploadBudget(DEFAULTS.uploadBudgetFile, opts.dailyLimit).load();
   if (!dryRun && !opts.out) report.log(`  uploaded in the last 24 h: ${gb(budget.used())} of ${gb(opts.dailyLimit)}`);
+  await fs.mkdir(DEFAULTS.workDir, { recursive: true });
+  return { opts, report, catalog, store, metadata: new Metadata(catalog, opts), budget };
+}
+
+/** Video files under the inputs (the work folder is skipped). */
+export function scanSources(inputs: string[]): Promise<string[]> {
+  return scan(inputs, DEFAULTS.workDir);
+}
+
+export type ImportStage = 'probe' | 'encode' | 'extract' | 'upload' | 'firestore';
+
+/** Imports one source file (name parse → processOne). `stage` reports where it is. */
+export async function importFile(
+  s: ImportSession,
+  file: string,
+  tag: string,
+  hooks: { stage?: (stage: ImportStage) => void } = {},
+): Promise<FileEntry> {
+  const name = parseEpisodeName(path.basename(file));
+  if (!name.ok) {
+    s.report.log(`${tag} ? ${path.basename(file)}\n   unparseable: ${name.reason} — skipped (rename it, e.g. "Title - S01E05.mkv")`);
+    return s.report.add({ file: path.basename(file), outcome: 'unparseable', detail: name.reason, notes: [] });
+  }
+  return processOne(file, name.value, tag, { ...s, stage: hooks.stage });
+}
+
+/** One-at-a-time lock for the upload + Firestore phase. */
+class Lane {
+  private busy = false;
+  private waiters: (() => void)[] = [];
+  async acquire(): Promise<void> {
+    if (!this.busy) {
+      this.busy = true;
+      return;
+    }
+    await new Promise<void>((r) => this.waiters.push(r));
+  }
+  release(): void {
+    const next = this.waiters.shift();
+    if (next) next();
+    else this.busy = false;
+  }
+}
+
+/**
+ * Imports files in order with **encode/upload overlap**: while episode N uploads, episode N+1 is
+ * probed and encoded. At most one upload runs and one encoded episode waits for it, so the work
+ * folder never holds more than two episodes. Dry runs stay strictly sequential.
+ * `shouldStop()` is checked before each new episode starts.
+ */
+export async function importFiles(
+  s: ImportSession,
+  files: readonly string[],
+  hooks: {
+    stage?: (index: number, stage: ImportStage) => void;
+    done?: (index: number, entry: FileEntry) => void;
+    shouldStop?: () => string | null;
+  } = {},
+): Promise<FileEntry[]> {
+  const lane = new Lane();
+  const results: Promise<FileEntry>[] = [];
+  let stop: string | null = null;
+  for (let i = 0; i < files.length; i++) {
+    stop ??= hooks.shouldStop?.() ?? null;
+    const file = files[i]!;
+    if (stop) {
+      const entry = s.report.add({ file: path.basename(file), outcome: 'stopped', notes: [], detail: stop });
+      hooks.done?.(i, entry);
+      results.push(Promise.resolve(entry));
+      continue;
+    }
+    let started!: () => void;
+    const uploading = new Promise<void>((r) => (started = r));
+    const tag = `[${i + 1}/${files.length}]`;
+    const name = parseEpisodeName(path.basename(file));
+    const p = (async (): Promise<FileEntry> => {
+      if (!name.ok) {
+        s.report.log(`${tag} ? ${path.basename(file)}\n   unparseable: ${name.reason} — skipped (rename it, e.g. "Title - S01E05.mkv")`);
+        return s.report.add({ file: path.basename(file), outcome: 'unparseable', detail: name.reason, notes: [] });
+      }
+      return processOne(file, name.value, tag, {
+        ...s,
+        stage: (st) => hooks.stage?.(i, st),
+        enterUpload: async () => {
+          await lane.acquire();
+          started();
+        },
+        leaveUpload: () => lane.release(),
+      });
+    })().then(
+      (entry) => {
+        started();
+        if (entry.outcome === 'stopped') stop ??= entry.detail ?? 'stopped';
+        hooks.done?.(i, entry);
+        return entry;
+      },
+      (e: unknown) => {
+        started();
+        throw e;
+      },
+    );
+    results.push(p);
+    // next episode starts once this one is uploading (or finished); dry runs one by one
+    await (s.opts.dryRun ? p.then(() => undefined, () => undefined) : uploading);
+  }
+  return Promise.all(results);
+}
+
+export async function runImport(argv: string[], dryRun: boolean): Promise<void> {
+  const opts = options(argv, dryRun);
+  const report = new Report(dryRun ? 'dry-run' : 'import');
+  report.log(`ani.stream ${report.command}${opts.out ? ' (local test target)' : ''}`);
+  report.log(`  source: ${opts.inputs.join(', ')}`);
+  const session = await openSession(opts, report);
+  const { metadata, budget } = session;
 
   let files = await scan(opts.inputs, DEFAULTS.workDir);
   report.log(`  found: ${files.length} video files\n`);
@@ -372,9 +497,6 @@ export async function runImport(argv: string[], dryRun: boolean): Promise<void> 
   if (opts.only) jobs = jobs.filter((j) => j.name.ok);
   if (opts.limit) jobs = jobs.slice(0, opts.limit);
   files = jobs.map((j) => j.file);
-
-  const metadata = new Metadata(catalog, opts);
-  await fs.mkdir(DEFAULTS.workDir, { recursive: true });
 
   let stop: string | null = null;
   let interrupts = 0;
@@ -390,21 +512,10 @@ export async function runImport(argv: string[], dryRun: boolean): Promise<void> 
   process.on('SIGINT', onSigint);
 
   try {
-    for (let i = 0; i < jobs.length; i++) {
-      const { file, name } = jobs[i]!;
-      const tag = `[${i + 1}/${jobs.length}]`;
-      const rel = path.basename(file);
-      if (stop) {
-        report.add({ file: rel, outcome: 'stopped', notes: [], detail: stop });
-        continue;
-      }
-      if (!name.ok) {
-        report.log(`${tag} ? ${rel}\n   unparseable: ${name.reason} — skipped (rename it, e.g. "Title - S01E05.mkv")`);
-        report.add({ file: rel, outcome: 'unparseable', detail: name.reason, notes: [] });
-        continue;
-      }
-      const entry = await processOne(file, name.value, tag, { opts, report, catalog, store, metadata, budget });
-      if (entry.outcome === 'stopped') stop = entry.detail ?? 'stopped';
+    await importFiles(session, files, { shouldStop: () => stop });
+    if (!stop) {
+      const stopped = report.entries.find((e) => e.outcome === 'stopped');
+      if (stopped) stop = stopped.detail ?? 'stopped';
     }
   } finally {
     process.off('SIGINT', onSigint);
@@ -428,13 +539,11 @@ export async function runImport(argv: string[], dryRun: boolean): Promise<void> 
   if (report.count('failed')) process.exitCode = 1;
 }
 
-interface Ctx {
-  opts: Options;
-  report: Report;
-  catalog: Catalog;
-  store: Store | null;
-  metadata: Metadata;
-  budget: UploadBudget;
+interface Ctx extends ImportSession {
+  stage?: (stage: ImportStage) => void;
+  /** Pipelining: wait for the upload lane before uploading (the next episode encodes meanwhile). */
+  enterUpload?: () => Promise<void>;
+  leaveUpload?: () => void;
 }
 
 async function processOne(file: string, name: ParsedName, tag: string, ctx: Ctx): Promise<FileEntry> {
@@ -473,7 +582,7 @@ async function processOne(file: string, name: ParsedName, tag: string, ctx: Ctx)
   const fail = async (msg: string, outcome: FileEntry['outcome'] = 'failed') => {
     entry.outcome = outcome;
     entry.detail = msg;
-    report.log(`   ✗ ${msg}`);
+    report.log(`   ✗ ${tag} ${msg}`);
     if (!opts.dryRun && catalog.writable) {
       await catalog.setImportState(stateId, {
         path: file, size: stat.size, mtime: Math.round(stat.mtimeMs),
@@ -484,6 +593,7 @@ async function processOne(file: string, name: ParsedName, tag: string, ctx: Ctx)
   };
 
   // 1. Probe + decide
+  ctx.stage?.('probe');
   let src: Source;
   try {
     src = await inspect(file, { measure: opts.measure });
@@ -533,6 +643,7 @@ async function processOne(file: string, name: ParsedName, tag: string, ctx: Ctx)
   const videoFile = path.join(work, `${epBase}.mp4`);
   const marker = path.join(work, 'video.json');
   let keepWork = opts.keepWork;
+  let inLane = false;
 
   try {
     await catalog.setImportState(stateId, {
@@ -549,6 +660,7 @@ async function processOne(file: string, name: ParsedName, tag: string, ctx: Ctx)
       }
     } catch { /* none */ }
     if (!verified) {
+      ctx.stage?.('encode');
       const te = performance.now();
       await writeVideo(src, d, videoFile, `${d.action} ${epBase}`);
       verified = await verifyVideo(src, d, videoFile);
@@ -559,6 +671,7 @@ async function processOne(file: string, name: ParsedName, tag: string, ctx: Ctx)
     entry.outputBytes = verified.sizeBytes;
 
     // 4. Subs, fonts, thumbnail
+    ctx.stage?.('extract');
     const subFiles = await extractSubtitles(src, subPlan.keep, epBase, work);
     const fonts: ExtractedFont[] = await extractFonts(src, fontPlan.fonts, work);
     const thumbFile = path.join(work, `${epBase}.thumb.webp`);
@@ -570,7 +683,12 @@ async function processOne(file: string, name: ParsedName, tag: string, ctx: Ctx)
       entry.notes.push(`thumbnail failed: ${(e as Error).message}`);
     }
 
-    // 5. Upload (small files first; the video last)
+    // 5. Upload (small files first; the video last). One upload at a time; while this one
+    // uploads, the runner already encodes the next episode.
+    await ctx.enterUpload?.();
+    inLane = true;
+    ctx.stage?.('upload');
+    const tu = performance.now();
     let sent = 0;
     const up = async (local: string, nameOnDrive: string, where: string[], mimeType: string) => {
       const r = await store.upload(local, nameOnDrive, where, {
@@ -597,9 +715,15 @@ async function processOne(file: string, name: ParsedName, tag: string, ctx: Ctx)
     const thumbId = thumbOk ? (await up(thumbFile, `${epBase}.thumb.webp`, parts, 'image/webp')).id : null;
     const video = await up(videoFile, `${epBase}.mp4`, parts, 'video/mp4');
     entry.uploadedBytes = sent;
-    report.log(`   ✓ uploaded ${gb(sent)}${sent === 0 ? ' (all files already on Drive)' : ''} — ${subs.length} subs, ${fonts.length} fonts${thumbId ? ', thumbnail' : ''}`);
+    const upSecs = (performance.now() - tu) / 1000;
+    entry.uploadSeconds = upSecs;
+    report.log(
+      `   ✓ ${tag} uploaded ${gb(sent)}${sent === 0 ? ' (all files already on Drive)' : ` in ${clock(upSecs)} (${mbps((sent * 8) / Math.max(upSecs, 0.001))})`}` +
+        ` — ${subs.length} subs, ${fonts.length} fonts${thumbId ? ', thumbnail' : ''}`,
+    );
 
     // 6. Firestore
+    ctx.stage?.('firestore');
     const now = Date.now();
     const prevEpisode = await catalog.getEpisode(seriesId, episodeId);
     const prevSeason = await catalog.getSeason(seriesId, seasonId as SeasonId);
@@ -636,7 +760,7 @@ async function processOne(file: string, name: ParsedName, tag: string, ctx: Ctx)
       stateId,
       state: { path: file, size: stat.size, mtime: Math.round(stat.mtimeMs), episodeRef: { seriesId, episodeId }, status: 'done' },
     });
-    report.log(`   ✓ Firestore series/${seriesId}/episodes/${episodeId} (season ${counts.seasonEpisodes} eps, series ${counts.seriesEpisodes} eps)`);
+    report.log(`   ✓ ${tag} Firestore series/${seriesId}/episodes/${episodeId} (season ${counts.seasonEpisodes} eps, series ${counts.seriesEpisodes} eps)`);
 
     entry.outcome = 'imported';
     entry.seconds = (performance.now() - t0) / 1000;
@@ -648,6 +772,7 @@ async function processOne(file: string, name: ParsedName, tag: string, ctx: Ctx)
     }
     return fail((e as Error).message);
   } finally {
+    if (inLane) ctx.leaveUpload?.();
     if (!keepWork) await fs.rm(work, { recursive: true, force: true }).catch(() => {});
   }
 }

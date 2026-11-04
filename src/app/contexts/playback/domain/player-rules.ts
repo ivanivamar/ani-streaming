@@ -2,9 +2,14 @@ import type { Chapter, SubtitleTrack } from '@ani/contracts';
 
 export type CaptionMode = 'full' | 'signs' | 'off';
 
-/** OP/ED chapter playing at `t`, if any (the skip button shows during it; not in the last 2 s). */
-export function skippableChapter(chapters: readonly Chapter[], t: number): Chapter | null {
-  return chapters.find((c) => (c.kind === 'op' || c.kind === 'ed') && t >= c.startSec && t < c.endSec - 2) ?? null;
+type Skippable = Pick<Chapter, 'startSec' | 'endSec'> & { readonly kind: string };
+
+/**
+ * OP/ED range playing at `t`, if any (the skip button shows during it; not in the last 2 s).
+ * Works on chapters and on `SkipSegment`s (chapters + AniSkip).
+ */
+export function skippableChapter<T extends Skippable>(ranges: readonly T[], t: number): T | null {
+  return ranges.find((c) => (c.kind === 'op' || c.kind === 'ed') && t >= c.startSec && t < c.endSec - 2) ?? null;
 }
 
 /** CC modes this episode offers, in button order. "off" is always there. */

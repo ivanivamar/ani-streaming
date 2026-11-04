@@ -1,6 +1,6 @@
 # ani.stream — revival plan (rev. 3, Nov 3, 2026)
 
-**Status: Steps 0–3 done, Step 4 written (Nov 3, 2026; to check on Ivan's PC); next Steps 5/6.** Replaces the allanime / ani-cli approach (blocked by
+**Status: Steps 0–5 done (Nov 4, 2026); next Step 6.** Replaces the allanime / ani-cli approach (blocked by
 purpose-built anti-scraping, see `claude/known-issue-api-sources-cloudflare.md`) with a library
 Ivan owns: his own episodes, compressed with ffmpeg, stored on Google Drive, streamed with range
 requests. Same model as the music app (Material Music).
@@ -349,7 +349,7 @@ song "OP" at 22:36, which stays untagged).
 | Watch | playback | MP4 player. **Add CC button** (full / signs / off), skip OP/ED from chapters. |
 | Library | library | As designed. |
 | New releases | releases | AniList schedule; "not on allanime" → "not in your library". |
-| Import | — | **Dropped.** Importing happens only through the importer script. |
+| Import | importing | **Kept (Nov 4), desktop only:** the page drives an import agent on the PC (`npm run agent -w @ani/import`) through Firestore — scan of the folder, review/match, queue, live progress. Encoding stays on the PC. |
 | Downloads | playback | Android offline downloads only (Step 8); hidden on web. |
 | Settings | identity | Signal Forms. Playback prefs, Data; Downloads section only on Android. |
 
@@ -386,7 +386,67 @@ Still to design: loading skeletons, player error, empty home.
 - Budgets: component styles warn at 8 kB (watch page CSS is ~7 kB). Initial bundle 990 kB.
 - `withViewTransitions()` removed: page motion is Web Animations (the spec's exact timings).
 
+### Import page (Nov 4)
+
+- Browser can't run ffmpeg/NVENC, so the page drives **`npm run agent -w @ani/import`** on the PC
+  through Firestore: `importAgent/main` (heartbeat, rescan request), `importScan/{id}` (one doc
+  per file in the folder: parsed name, status, AniList match/candidates), `importJobs/{id}`
+  (queued by the page, run one at a time by the agent with the same code as `npm run import`,
+  live stage + %). Picking an AniList candidate writes `overrides/{seriesId}`.
+- New app context `importing` (`@importing/*`), route `/import` (desktop only, sidebar item).
+- Importer refactor: `openSession()` / `importFile()` / `scanSources()` exported from
+  `import.ts` (CLI unchanged), stage hooks, `progress.ts` sink fed by the ffmpeg runner and
+  resumable upload, `matchSeries` returns candidate media. `agent.test.ts` runs scan → job →
+  x265 import → rescan against an in-memory Firestore.
+- `firestore.rules`: read for allowlisted users; the app may create `queued` jobs, set
+  `cancelRequested` and `scanRequestedAt`, and write `overrides`.
+
 ## Step 5 — Player (web)
+
+**Subtitles done (Nov 4):** JASSUB 2.5.23 (`playback/infrastructure/jassub-renderer.ts`, port
+`SubtitleRendererPort`). The worker imports npm packages and the Angular builder doesn't follow
+`new Worker(new URL(…))` inside node_modules, so `scripts/build-jassub.mjs` (esbuild) bundles it
+into `public/jassub/` with the WASM + default font (gitignored; `npm start` / `npm run build` run
+it). The .ass file and the series fonts are downloaded on the page with `DriveClient` (a worker
+can't answer the streaming service worker's token request) and passed as `subContent` / `fonts`;
+`queryFonts: 'local'` for fonts the release didn't ship. CC menu switches tracks live.
+
+**AniSkip fallback + HEVC decode check — done (Nov 4, confirmed on Ivan's PC):**
+
+- **Skip OP/ED** = the episode's chapters, plus [AniSkip](https://api.aniskip.com) for whichever
+  of OP/ED the chapters don't mark (Aoashi S01E01 marks neither). Rules in
+  `playback/domain/skip-times.ts`: the season's AniList id (season doc, else the series for S1) →
+  MAL id via AniList `Media.idMal` (cached in localStorage `ani.malIds.v1`) →
+  `GET /v2/skip-times/{mal}/{episode}?types[]=op,ed,mixed-op,mixed-ed&episodeLength=…`. A result
+  is used only if its submitter's episode length is within **±12 s** of ours, it's 20–200 s long
+  and inside the video; clean `op`/`ed` beat `mixed-*`, then closest length. Adapter
+  `infrastructure/aniskip.client.ts` (port `SkipTimesPort`, 8 s timeout, 404 = none, session cache).
+  Any failure → chapters only. Auto-skip opening applies to AniSkip times too; the Skip button's
+  tooltip says where the times came from. No import or Firestore change.
+- **Decode check** (`domain/decode-support.ts`, adapter `infrastructure/media-capabilities.probe.ts`,
+  port `DecoderProbePort`): `MediaCapabilities.decodingInfo({ type: 'file' })` with the episode's
+  codec string (`hvc1.2.4.L120.B0` at 1080p, level from the height), size and bitrate;
+  `powerEfficient` = GPU. Browser from UA Client Hints (Edge before Chrome). Replaces the old
+  `MediaSource.isTypeSupported` check (we play progressive MP4, not MSE).
+  - Player: **unsupported** → card with browser-specific advice + "Try anyway" (the video isn't
+    loaded until then); **software** → dismissable notice (may stutter); errors use the same advice.
+  - **Settings → Playback → "Video decoding"**: `HEVC Main 10 · GPU · Edge` (mint), Software
+    (amber) or Not supported (red) with the advice under it — the check to run in both browsers.
+  - Edge needs Microsoft's **HEVC Video Extensions** (Media Foundation path, can fall back to
+    software); Chrome uses D3D11 directly, GPU only, nothing to install.
+- 79 app tests (16 new: domain rules, AniSkip client with mocked fetch, `PlaybackStore.skips`), lint clean,
+  prod build within budgets. Headless Chromium (no GPU) reports HEVC unsupported, as expected.
+
+**Check on the PC (both Chrome and Edge, `npm start`):**
+1. Settings → Video decoding shows `HEVC Main 10 · GPU · <browser>`.
+2. Play AoT S01E01; open `chrome://media-internals` / `edge://media-internals` → the player's
+   `kVideoDecoderName` is `D3D11VideoDecoder` (Chrome) or `VDAVideoDecoder` / `MediaFoundation…`
+   (Edge) — **not** `FFmpegVideoDecoder` / `Dav1d…`. `chrome://gpu` → "Decode hevc main 10" listed.
+3. Edge without the extension: the player shows the "can't play" card naming HEVC Video Extensions.
+4. Aoashi S01E01: a "Skip ending" (or opening) button appears at AniSkip's times, if AniSkip has
+   them for MAL 49784 E01 (unverified from the cloud: AniSkip/AniList hosts are blocked here).
+   DevTools → Network → `aniskip` shows the request.
+
 - `<video>` with Drive stream, JASSUB (deferred) with the series' fonts, chapter-based skip
   buttons (AniSkip fallback), autoplay next, keyboard shortcuts.
 - `ProgressTracker` writes every ~10 s and on pause / seek / leave / `visibilitychange`.
@@ -429,7 +489,7 @@ Steps 3–4 can start with a few hand-written Firestore docs and one test MP4 wh
 - **Firebase project: `myanime-streaming`** (new project, not `my-streaming-969f8`).
 - **GPU: RTX 3060 → `hevc_nvenc`** (10-bit, B-frames). No AV1 encode on this card.
   ffmpeg on Windows: a full build with NVENC (`winget install Gyan.FFmpeg`).
-- **No import status page**; the Import screen is dropped.
+- ~~No import status page; the Import screen is dropped.~~ **Nov 4: the Import page is back**, driving a PC import agent through Firestore (see Step 4).
 - **Originals**: no folder structure yet. Samples in `C:\Users\ivani\Videos\Anime`:
   - `[LostYears] Aoashi - S01E01 (WEB 1080p x264 E-AC-3 AAC) [720C6417].mkv` — 724 MB, WEB, H.264.
     If 8-bit and ≤ ceiling bitrate it's a **copy** candidate (video remuxed, audio → AAC).

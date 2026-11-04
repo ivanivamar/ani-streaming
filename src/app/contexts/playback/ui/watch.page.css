@@ -340,6 +340,13 @@ video {
   animation: pop 0.14s ease-out;
 }
 
+.cc-none {
+  padding: 2px 10px 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-5);
+}
+
 .cc-menu .eyebrow {
   padding: 8px 10px 6px;
   color: var(--text-6);
@@ -641,4 +648,35 @@ video {
   bottom: 12px;
   right: 56px;
   max-height: none;
+}
+
+/* subtitle load error */
+.sub-error {
+  position: absolute;
+  left: 50%;
+  top: 76px;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 14px;
+  border-radius: 10px;
+  background: rgba(10, 11, 13, 0.82);
+  border: 1px solid rgba(255, 140, 140, 0.3);
+  font-size: 13px;
+  color: #ffb3b3;
+}
+
+.sub-error button {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
 }

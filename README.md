@@ -30,6 +30,7 @@ src/app/
     library/    library status, favourites, progress, history
     releases/   airing schedule, premieres, notifications
     identity/   Google sign-in, Drive token, profile, prefs, access allowlist
+    importing/  Import page ↔ the import agent on the PC (Firestore importAgent/importScan/importJobs)
       domain/          pure TS: entities, value objects, rules, ports
       application/     use cases / signal stores — the context's public API (index.ts)
       infrastructure/  Firestore / Drive / AniList adapters implementing the ports
@@ -44,7 +45,7 @@ packages/contracts/  Firestore document types + id helpers
 tools/import/        importer (Step 1+)
 ```
 
-Path aliases: `@catalog/*`, `@playback/*`, `@library/*`, `@releases/*`, `@identity/*`,
+Path aliases: `@catalog/*`, `@playback/*`, `@library/*`, `@releases/*`, `@identity/*`, `@importing/*`,
 `@shared/*`, `@shell/*`, `@ani/contracts`.
 
 ### Layer rules (enforced by `npm run lint`)
@@ -71,6 +72,7 @@ npm test             # Vitest (ng test, single run); npm run test:watch to watch
 npm run lint         # ESLint + angular-eslint + layer boundaries
 npm run functions:test   # sign-in helper tests (after npm --prefix firebase/functions install)
 npm run deploy       # firebase deploy (Hosting builds first, Functions bundles first)
+npm run agent -w @ani/import   # import agent for the app's Import page (leave it running on the PC)
 ```
 
 ## How sign-in and streaming work

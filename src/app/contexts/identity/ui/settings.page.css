@@ -117,3 +117,25 @@ section {
   border-color: var(--danger-armed);
   color: #fff;
 }
+
+.decode-chip {
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: #1f2025;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--text-4);
+}
+
+.decode-chip[data-support='hardware'] {
+  background: var(--accent-tint);
+  color: var(--accent-text);
+}
+
+.decode-chip[data-support='software'] {
+  color: var(--warn);
+}
+
+.decode-chip[data-support='unsupported'] {
+  color: var(--danger);
+}

@@ -20,13 +20,17 @@ import { seasonName, type Episode } from '@catalog/application';
 import { PrefsStore } from '@identity/application';
 import { LibraryStore, nextEpisode, ProgressTracker } from '@library/application';
 import {
+  BROWSER_NAME,
   CAPTION_LABEL,
   captionModes,
-  codecString,
+  captionTrack,
+  chapterSkips,
   initialCaption,
   PlaybackStore,
   skippableChapter,
+  SubtitleRendererPort,
   type CaptionMode,
+  type SubtitleSession,
 } from '@playback/application';
 import { formatDuration } from '@shared/kernel';
 import { Icon, Motion, thumbGradient, Viewport } from '@shared/ui';
@@ -49,8 +53,11 @@ interface PopupRow {
  * Watch (v3, adapted): full-viewport `<video>` streaming the MP4 from Drive through the service
  * worker, v3 chrome (scrub bar, play / ±10 s, timecode, next, episodes popup with season tabs,
  * fullscreen; touch layout centres the transport), plus the **CC button** (full / signs / off)
- * and **Skip OP/ED** from the episode's chapters. Progress → `ProgressTracker` (10 s / pause /
- * seek / leave). Styled-subtitle rendering (JASSUB) is Step 5; the CC choice is already kept.
+ * and **Skip OP/ED** from the episode's chapters, or AniSkip when the chapters don't mark them.
+ * Progress → `ProgressTracker` (10 s / pause / seek / leave). Subtitles are drawn by JASSUB
+ * (`SubtitleRendererPort`) with the series' fonts. Before playing, the browser is asked whether
+ * it decodes the episode's codec (HEVC 10-bit) on the GPU; if it can't at all, a card explains
+ * what to install / switch on (Edge: HEVC Video Extensions) with a "Try anyway".
  */
 @Component({
   selector: 'app-watch-page',
@@ -69,6 +76,7 @@ interface PopupRow {
 })
 export class WatchPage {
   private readonly playback = inject(PlaybackStore);
+  private readonly subtitles = inject(SubtitleRendererPort);
   private readonly library = inject(LibraryStore);
   private readonly prefs = inject(PrefsStore);
   private readonly router = inject(Router);
@@ -108,6 +116,9 @@ export class WatchPage {
   protected readonly ccOpen = signal(false);
   protected readonly idle = signal(false);
   protected readonly videoError = signal<string | null>(null);
+  /** user dismissed the "can't decode" card */
+  protected readonly tryAnyway = signal(false);
+  protected readonly decodeNoticeHidden = signal(false);
   private scrubbing = false;
   private hideTimer: ReturnType<typeof setTimeout> | undefined;
   private tracker: ProgressTracker | null = null;
@@ -134,19 +145,40 @@ export class WatchPage {
     return parts.join(' · ');
   });
 
-  protected readonly canDecode = computed(() => {
-    const v = this.ep()?.video;
-    if (!v || typeof MediaSource === 'undefined') return true;
-    return MediaSource.isTypeSupported(codecString(v.codec, v.bitDepth));
+  /** GPU decode check for this episode's video track (cached per codec + size). */
+  protected readonly decode = resource({
+    params: () => {
+      const v = this.ep()?.video;
+      return v ? { codec: v.codec, bitDepth: v.bitDepth, width: v.width, height: v.height, bitrate: v.bitrate } : undefined;
+    },
+    loader: ({ params }) => this.playback.decodeSupport(params),
   });
+  protected readonly decodeReport = computed(() => (this.decode.hasValue() ? this.decode.value() : null));
+  /** Don't start the video while the check runs, nor when it says "can't" (until Try anyway). */
+  protected readonly decodeBlocked = computed(() => {
+    if (this.tryAnyway() || this.decode.error()) return false;
+    if (this.decode.isLoading()) return true;
+    return this.decodeReport()?.support === 'unsupported';
+  });
+  protected readonly canDecode = computed(() => this.decodeReport()?.support !== 'unsupported');
 
   /* captions (rendered in Step 5) */
   protected readonly ccModes = computed(() => captionModes(this.ep()?.subs ?? []));
   protected readonly cc = linkedSignal<CaptionMode>(() => initialCaption(this.ep()?.subs ?? [], this.prefs.prefs().subtitles));
   protected readonly ccLabel = CAPTION_LABEL;
+  protected readonly browserName = BROWSER_NAME;
+  protected readonly subError = signal<string | null>(null);
+  private readonly subSession = signal<SubtitleSession | null>(null);
 
-  /* chapters */
-  protected readonly skipChapter = computed(() => skippableChapter(this.ep()?.chapters ?? [], this.time()));
+  /* skip OP/ED: chapters right away, then chapters + AniSkip once the lookup answers */
+  protected readonly skips = resource({
+    params: () => this.playable.value() ?? undefined,
+    loader: ({ params }) => this.playback.skips(params),
+  });
+  protected readonly skipRanges = computed(() =>
+    this.skips.hasValue() ? this.skips.value() : chapterSkips(this.ep()?.chapters ?? []),
+  );
+  protected readonly skipChapter = computed(() => skippableChapter(this.skipRanges(), this.time()));
 
   /* episodes popup */
   protected readonly popupSeason = linkedSignal(() => this.ep()?.season ?? 1);
@@ -199,6 +231,29 @@ export class WatchPage {
         this.videoError.set(null);
         this.waiting.set(true);
         this.autoSkipped.clear();
+        this.decodeNoticeHidden.set(false);
+      });
+    });
+    // styled subtitles (JASSUB): one renderer per <video> element, the track follows the CC choice
+    effect((onCleanup) => {
+      const video = this.videoRef()?.nativeElement;
+      const series = this.series();
+      if (!video || !series) return;
+      const session = untracked(() => this.subtitles.open(video, series.fontFileIds ?? []));
+      this.subSession.set(session);
+      onCleanup(() => {
+        session.destroy();
+        this.subSession.set(null);
+      });
+    });
+    effect(() => {
+      const session = this.subSession();
+      const track = captionTrack(this.ep()?.subs ?? [], this.cc());
+      if (!session) return;
+      untracked(() => this.subError.set(null));
+      session.show(track).catch((e: unknown) => {
+        console.warn('[subs]', e);
+        this.subError.set("Subtitles couldn't be loaded for this episode.");
       });
     });
     // auto-skip the opening once per episode when the pref is on
@@ -267,7 +322,7 @@ export class WatchPage {
       err?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED
         ? this.canDecode()
           ? "Drive refused the stream, or the file isn't reachable. Signing in again usually fixes it."
-          : "This browser can't decode HEVC 10-bit. Use Chrome or Edge with hardware decoding on Windows, or the Android app."
+          : (this.decodeReport()?.advice ?? "This browser can't decode HEVC 10-bit. Use Chrome or Edge on Windows, or the Android app.")
         : err?.code === MediaError.MEDIA_ERR_NETWORK
           ? 'The connection dropped while streaming from Drive.'
           : err?.message || 'Playback failed.',

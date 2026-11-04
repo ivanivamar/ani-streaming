@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { emitProgress } from './progress.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -146,6 +147,10 @@ export function runFfmpeg(args: string[], opts: RunOptions = {}): Promise<void> 
         if (eq < 0) continue;
         state[line.slice(0, eq)] = line.slice(eq + 1);
         if (line.startsWith('progress=') && !opts.quiet) {
+          if (opts.duration) {
+            const tp = Math.max(0, Number(state['out_time_us'] ?? state['out_time_ms'] ?? 0) / 1e6);
+            emitProgress({ kind: 'encode', label: opts.label ?? '', fraction: Math.min(1, tp / opts.duration) });
+          }
           const now = Date.now();
           if (!tty && now - lastPrint < 15000) continue;
           lastPrint = now;

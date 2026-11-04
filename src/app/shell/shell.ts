@@ -13,12 +13,15 @@ interface NavItem {
   readonly icon: IconName;
 }
 
-/** Downloads (Android only, Step 8) and Import (dropped) aren't on the web nav. */
+/** Downloads (Android only, Step 8) isn't on the web nav. */
 const NAV: readonly NavItem[] = [
   { path: '/', label: 'Home', short: 'Home', icon: 'home' },
   { path: '/library', label: 'Library', short: 'Library', icon: 'library' },
   { path: '/releases', label: 'New releases', short: 'Releases', icon: 'releases' },
 ];
+
+/** Desktop sidebar only (v3: Import isn't reachable on phones). */
+const DESKTOP_NAV: readonly NavItem[] = [...NAV, { path: '/import', label: 'Import', short: 'Import', icon: 'import' }];
 
 const RAIL_KEY = 'ani.railed';
 
@@ -56,7 +59,7 @@ const readRailed = (): boolean => {
             </button>
           </div>
           <nav aria-label="Main">
-            @for (n of nav; track n.path) {
+            @for (n of desktopNav; track n.path) {
               <a
                 class="nav-item"
                 [routerLink]="n.path"
@@ -152,6 +155,7 @@ export class Shell {
   private readonly chrome = viewChild.required<ElementRef<HTMLElement>>('chrome');
 
   protected readonly nav = NAV;
+  protected readonly desktopNav = DESKTOP_NAV;
   protected readonly railed = signal(readRailed());
   protected readonly profileOpen = signal(false);
   protected readonly account = this.session.account;

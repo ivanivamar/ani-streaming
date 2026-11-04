@@ -1,12 +1,20 @@
-import { Component, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
+import { Component, computed, effect, inject, linkedSignal, resource, signal, untracked } from '@angular/core';
 import { form, FormField } from '@angular/forms/signals';
 import { Router } from '@angular/router';
 import { PrefsStore, SessionStore, type Prefs, type WatchedThreshold } from '@identity/application';
 import { LibraryStore } from '@library/application';
+import { BROWSER_NAME, PlaybackStore, type DecodeSupport } from '@playback/application';
 import { Avatar, GoogleG, Segmented, Toggle, type SegmentOption } from '@shared/ui';
 import { SUBTITLE_OPTIONS } from './prefs-options';
 
 type Armed = 'clear' | 'delete' | null;
+
+const DECODE_LABEL: Record<DecodeSupport, string> = {
+  hardware: 'GPU',
+  software: 'Software',
+  unsupported: 'Not supported',
+  unknown: 'Unknown',
+};
 
 const THRESHOLD_OPTIONS: readonly SegmentOption<WatchedThreshold>[] = [
   { value: 0.8, label: '80%' },
@@ -17,7 +25,8 @@ const THRESHOLD_OPTIONS: readonly SegmentOption<WatchedThreshold>[] = [
 /**
  * Settings (v3 adapted): Account, Playback, Data. Playback prefs are a Signal Form saved to
  * `users/{uid}.prefs` on every change. The Downloads section exists only in the Android app
- * (Step 8). Destructive buttons need a second click.
+ * (Step 8). Destructive buttons need a second click. "Video decoding" shows whether this browser
+ * decodes HEVC 10-bit on the GPU (the check to run in both Chrome and Edge).
  */
 @Component({
   selector: 'app-settings-page',
@@ -30,6 +39,15 @@ export class SettingsPage {
   private readonly prefs = inject(PrefsStore);
   private readonly library = inject(LibraryStore);
   private readonly router = inject(Router);
+  private readonly playback = inject(PlaybackStore);
+
+  protected readonly decode = resource({ loader: () => this.playback.decodeSupport() });
+  protected readonly decodeLine = computed(() => {
+    if (this.decode.isLoading()) return 'Checking…';
+    const r = this.decode.hasValue() ? this.decode.value() : null;
+    if (!r) return "Couldn't check";
+    return `${r.label} · ${DECODE_LABEL[r.support]} · ${BROWSER_NAME[r.browser]}`;
+  });
 
   protected readonly subtitleOptions = SUBTITLE_OPTIONS;
   protected readonly thresholdOptions = THRESHOLD_OPTIONS;

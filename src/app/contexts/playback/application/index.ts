@@ -6,13 +6,23 @@
  */
 export { PlaybackStore, type PlayableEpisode } from './playback.store';
 export {
+  BROWSER_NAME,
   CAPTION_LABEL,
   captionModes,
   captionTrack,
-  codecString,
+  chapterSkips,
   initialCaption,
   skippableChapter,
+  DecoderProbePort,
+  SkipTimesPort,
+  SubtitleRendererPort,
+  TYPICAL_EPISODE,
   VideoSourcePort,
   type CaptionMode,
+  type DecodeReport,
+  type DecodeSupport,
   type DriveVideo,
+  type SkipSegment,
+  type SubtitleFile,
+  type SubtitleSession,
 } from '../domain';

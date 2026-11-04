@@ -21,6 +21,7 @@
             "outputPath": "dist/ani-stream",
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
+            "allowedCommonJsDependencies": ["rvfc-polyfill", "throughput"],
             "assets": [{ "glob": "**/*", "input": "public", "ignore": ["**/.gitkeep"] }],
             "styles": ["src/styles.css"]
           },

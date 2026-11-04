@@ -9,6 +9,7 @@
  * Nothing is ever deleted from Drive.
  */
 import crypto from 'node:crypto';
+import { emitProgress } from './progress.ts';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
@@ -18,7 +19,12 @@ import type { OAuthClient } from './auth.ts';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files';
 /** Must be a multiple of 256 KiB. */
-const CHUNK = 64 * 1024 * 1024;
+/**
+ * Bytes per PUT of a resumable upload (multiple of 256 KiB). Every chunk ends with a round trip
+ * where Drive commits it, so bigger chunks keep the connection busy longer: 256 MiB ≈ 2 chunks
+ * per episode. Also the resume granularity after an interruption.
+ */
+const CHUNK = 256 * 1024 * 1024;
 const q = (s: string) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -199,6 +205,7 @@ export class DriveStore implements Store {
     }
 
     const sentFrom = offset;
+    const t0 = Date.now();
     const fd = await fsp.open(localPath, 'r');
     try {
       let failures = 0;
@@ -229,6 +236,13 @@ export class DriveStore implements Store {
         if (res.status === 308) {
           failures = 0;
           offset = rangeEnd(res.headers.get('range'));
+          const secs = (Date.now() - t0) / 1000;
+          emitProgress({
+            kind: 'upload',
+            label: opts.label ?? name,
+            fraction: size ? offset / size : 1,
+            bytesPerSec: secs > 0 ? (offset - sentFrom) / secs : 0,
+          });
           const msg = `  ↑ ${opts.label ?? name} ${(offset / size * 100).toFixed(1)}%`;
           if (process.stdout.isTTY) process.stdout.write(`\r${msg.padEnd(70)}`);
           continue;
