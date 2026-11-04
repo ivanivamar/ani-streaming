@@ -17,7 +17,8 @@
     "lint": "ng lint",
     "functions:test": "npm --prefix firebase/functions test",
     "functions:bundle": "npm --prefix firebase/functions run bundle",
-    "deploy": "firebase deploy",
+    "deploy": "npm run build && firebase deploy",
+    "deploy:hosting": "npm run build && firebase deploy --only hosting",
     "test:rules": "npm run test -w @ani/rules-tests"
   },
   "dependencies": {

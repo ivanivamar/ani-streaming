@@ -9,6 +9,7 @@ import {
   RouterOutlet,
 } from '@angular/router';
 import { Motion } from '@shared/ui';
+import { UpdatePrompt } from './update-prompt';
 
 /** navigations quicker than this never show the progress bar */
 const SHOW_AFTER_MS = 120;
@@ -17,16 +18,17 @@ const SHOW_AFTER_MS = 120;
  * Root: the router outlet, a thin progress bar while a navigation takes longer than 120 ms
  * (guards, a chunk still downloading), and route depth bookkeeping for page motion (route
  * `data.depth`: auth −1 · top-level 0 · search 1 · anime 2 · player 3; going to a lower depth
- * plays the "back" direction).
+ * plays the "back" direction). Also hosts the "New version · Reload" prompt.
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, UpdatePrompt],
   template: `
     @if (busy()) {
       <div class="nav-progress" role="progressbar" aria-label="Loading page"><i></i></div>
     }
     <router-outlet />
+    <app-update-prompt />
   `,
   styles: `
     .nav-progress {

@@ -11,19 +11,41 @@
   "hosting": {
     "public": "dist/ani-stream/browser",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "predeploy": ["npm run build"],
     "rewrites": [
       { "source": "/api/**", "function": { "functionId": "api", "region": "europe-west1" } },
       { "source": "**", "destination": "/index.html" }
     ],
     "headers": [
       {
+        "source": "**",
+        "headers": [
+          { "key": "X-Content-Type-Options", "value": "nosniff" },
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+        ]
+      },
+      {
         "source": "**/*.@(html|webmanifest)",
         "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       },
       {
+        "source": "**/!(*.*)",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      },
+      {
+        "source": "**/*.webmanifest",
+        "headers": [{ "key": "Content-Type", "value": "application/manifest+json" }]
+      },
+      {
         "source": "/sw.js",
         "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      },
+      {
+        "source": "/jassub/**",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      },
+      {
+        "source": "/icons/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
       },
       {
         "source": "/@(main|chunk|polyfills|styles)-*.@(js|css)",

@@ -73,7 +73,8 @@ npm test             # Vitest (ng test, single run); npm run test:watch to watch
 npm run lint         # ESLint + angular-eslint + layer boundaries
 npm run test:rules   # firestore.rules tests in the Firestore emulator (needs Java 21+)
 npm run functions:test   # sign-in helper tests (after npm --prefix firebase/functions install)
-npm run deploy       # firebase deploy (Hosting builds first, Functions bundles first)
+npm run deploy       # build, then firebase deploy (everything; Functions bundles first)
+npm run deploy:hosting   # build, then deploy Hosting only
 npm run agent -w @ani/import   # import agent for the app's Import page (leave it running on the PC)
 ```
 
@@ -98,7 +99,50 @@ it. The first run downloads the emulator jar (~60 MB). Java 21+ is required
 uses single-field equality). Large nested fields that are never queried (episode tracks and
 chapters, synopsis, import candidates/results) are excluded from indexing to save index writes.
 
-Deploy both with `firebase deploy --only firestore`.
+Deploy both with `firebase deploy --only firestore` (CI does it on push to `main`).
+
+## Deploying (Step 7)
+
+Pushes to `main` deploy through [`.github/workflows/firebase.yml`](.github/workflows/firebase.yml);
+pull requests to `main` run the same checks without deploying; *Actions → Firebase → Run
+workflow* runs everything.
+
+| Part | Runs when these change | Checks | Deploys |
+| --- | --- | --- | --- |
+| web | `src`, `public`, `packages`, `scripts`, Angular/TS/ESLint config, `package*.json` | lint, unit tests, production build | Hosting (the built `dist/`) |
+| rules | `firestore.rules`, `firestore.indexes.json`, `tools/rules-tests`, `packages/contracts` | rules tests in the emulator | `firestore:rules,firestore:indexes` |
+| functions | `firebase/functions` | typecheck, tests | the `api` function |
+
+`firebase.json` and the workflow itself count for all three. Hosting goes last, after the rules
+and the function, so a page never ships before the rule or `/api` route it needs. A failed check
+stops its deploy and Hosting.
+
+Hosting no longer builds in `predeploy` (CI deploys the build it tested), so a manual
+`firebase deploy --only hosting` needs `npm run build` first; `npm run deploy` /
+`npm run deploy:hosting` do both.
+
+**One-time setup: the deploy service account**
+
+1. Google Cloud console (project `myanime-streaming`) → *IAM & Admin → Service accounts →
+   Create service account* `github-deploy`, with these roles:
+   - Firebase Hosting Admin, Cloud Run Viewer, Cloud Functions Viewer, API Keys Viewer
+   - Firebase Rules Admin, Cloud Datastore Index Admin
+   - Cloud Functions Admin, Cloud Run Admin, Service Account User, Secret Manager Viewer,
+     Artifact Registry Administrator, Service Usage Consumer
+2. The account → *Keys → Add key → JSON*. GitHub repo → *Settings → Secrets and variables →
+   Actions → New repository secret* `FIREBASE_SERVICE_ACCOUNT` = the whole JSON file. Delete the
+   downloaded file afterwards.
+3. Function secrets (`GOOGLE_CLIENT_ID/SECRET`) are already set from Step 3; a **new** secret still
+   needs one deploy from the PC (the CLI grants the function access, the CI account can't).
+
+**Updates in the app**: each build gets a new service-worker version (`scripts/build-sw.mjs`).
+Open tabs check for it every 30 min and when the tab comes back to the front; once it's
+installed a "New version · Reload" toast appears (not in the player). Reload switches to the new
+build; × hides it until the next deploy (the new build then starts once every tab is closed).
+
+**Installing**: `public/manifest.webmanifest` + `public/icons/*` make the site installable
+(Chrome/Edge: install icon in the address bar; Android: *Add to Home screen*; iOS Safari: *Share →
+Add to Home Screen*).
 
 ## How sign-in and streaming work
 
