@@ -1,6 +1,6 @@
 # ani.stream — revival plan (rev. 3, Nov 3, 2026)
 
-**Status: Steps 0–5 done, Step 6 written (Nov 4, 2026) — rules tests to run on the PC; next Step 7.** Replaces the allanime / ani-cli approach (blocked by
+**Status: Steps 0–6 done (Nov 4, 2026); next Step 7.** Replaces the allanime / ani-cli approach (blocked by
 purpose-built anti-scraping, see `claude/known-issue-api-sources-cloudflare.md`) with a library
 Ivan owns: his own episodes, compressed with ffmpeg, stored on Google Drive, streamed with range
 requests. Same model as the music app (Material Music).
@@ -486,6 +486,7 @@ can't answer the streaming service worker's token request) and passed as `subCon
 - Cloud checks: 82 app tests (3 new), lint clean, prod build, rules tests typecheck. **The rules
   tests themselves have not run**: the sandbox can't download the emulator jar.
 - PC: install Java 21+, `npm install`, `npm run test:rules`; then `firebase deploy --only firestore`.
+- **Confirmed by Ivan (Nov 4): works on the PC.**
 
 ## Step 7 — Firebase Hosting + CI
 - `firebase.json` copied from the music app (cache headers, `/api/**` → function) + SPA rewrite;
