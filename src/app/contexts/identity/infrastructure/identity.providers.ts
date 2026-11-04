@@ -7,11 +7,13 @@ import {
   GoogleIdentityPort,
   GoogleProfilePort,
   SessionPersistencePort,
+  UserProfilePort,
 } from '../application/ports';
 import { SessionStore } from '../application/session.store';
 import { AuthHelperClient } from './auth-helper.client';
 import { CustomTokenFirebaseSession } from './firebase-session';
 import { FirestoreAccess } from './firestore-access';
+import { FirestoreUserProfile } from './firestore-user-profile';
 import { GisGoogleIdentity } from './gis';
 import { DriveAboutProfile } from './google-profile';
 import { LocalSessionPersistence } from './local-session-persistence';
@@ -25,6 +27,7 @@ export function provideIdentity(): EnvironmentProviders {
     { provide: SessionPersistencePort, useClass: LocalSessionPersistence },
     { provide: FirebaseSessionPort, useClass: CustomTokenFirebaseSession },
     { provide: AccessPort, useClass: FirestoreAccess },
+    { provide: UserProfilePort, useClass: FirestoreUserProfile },
     // Drive access for shared/playback infrastructure comes from the session
     { provide: AccessTokenSource, useExisting: SessionStore },
   ]);

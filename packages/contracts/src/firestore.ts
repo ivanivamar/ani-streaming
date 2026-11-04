@@ -153,6 +153,10 @@ export interface UserPrefs {
   autoplayNext?: boolean;
   autoSkipIntro?: boolean;
   subtitles?: 'full' | 'signs' | 'off';
+  /** resume where the episode was left (else start over) */
+  resume?: boolean;
+  /** fraction of an episode after which it counts as watched */
+  watchedThreshold?: 0.8 | 0.9 | 0.95;
 }
 
 export type LibraryStatus = 'watching' | 'planned' | 'completed' | 'paused' | 'dropped';

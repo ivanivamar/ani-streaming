@@ -1,0 +1,77 @@
+<div class="head">
+  <h1 class="h-page">Library</h1>
+  <span class="count">{{ rows().length }} titles</span>
+</div>
+
+<div class="toolbar">
+  <div class="tabs scroll-x" appStagger>
+    @for (t of tabs(); track t.value) {
+      <button type="button" appPill class="pill-md" [on]="filter() === t.value" (click)="filter.set(t.value)">
+        {{ t.name }}<span class="n">{{ t.count }}</span>
+      </button>
+    }
+  </div>
+  <div class="tools">
+    <app-dropdown [options]="sortOptions" [(value)]="sort" icon="sort" [minWidth]="190" ariaLabel="Sort" />
+    <div class="views" role="radiogroup" aria-label="View">
+      <button type="button" role="radio" title="Grid" aria-label="Grid" [attr.aria-checked]="view() === 'grid'" [class.on]="view() === 'grid'" (click)="setView('grid')">
+        <app-icon name="grid" [size]="15" [stroke]="1.9" />
+      </button>
+      <button type="button" role="radio" title="List" aria-label="List" [attr.aria-checked]="view() === 'list'" [class.on]="view() === 'list'" (click)="setView('list')">
+        <app-icon name="list" [size]="15" [stroke]="1.9" />
+      </button>
+    </div>
+  </div>
+</div>
+
+@if (!library.loaded() || all.isLoading()) {
+  <div class="poster-grid">
+    @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+      <div class="skeleton sk"></div>
+    }
+  </div>
+} @else if (items().length === 0) {
+  <div class="empty-lib">Nothing in {{ filterName() }} yet.</div>
+} @else if (view() === 'grid') {
+  <div class="poster-grid" appStagger>
+    @for (r of items(); track r.series.id) {
+      <app-poster-card
+        [title]="r.series.title"
+        [meta]="ago(r)"
+        [src]="r.series.posterUrl"
+        [seed]="r.series.id"
+        [link]="['/anime', r.series.id]"
+        [progress]="r.fraction > 0 ? r.fraction : null"
+        [progressColor]="r.color"
+        hasMenu
+        (menu)="menu($event, r)"
+      >
+        <span cardTopLeft class="status-chip"><span class="dot sm" [style.background]="r.color"></span>{{ label[r.entry.status] }}</span>
+        <span cardBottom class="chip">{{ r.done }}</span>
+      </app-poster-card>
+    }
+  </div>
+} @else {
+  <div class="list" appStagger>
+    @for (r of items(); track r.series.id) {
+      <div class="row" role="link" tabindex="0" (click)="open(r)" (keydown.enter)="open(r)" (contextmenu)="menu($event, r)">
+        <div class="thumb" [style.background]="thumb(r)"></div>
+        <div class="text">
+          <div class="title">{{ r.series.title }}</div>
+          <div class="meta">{{ listMeta(r) }}</div>
+        </div>
+        @if (!vp.mobile()) {
+          <span class="status"><span class="dot" [style.background]="r.color"></span>{{ label[r.entry.status] }}</span>
+          <div class="prog">
+            <div class="bar-track"><i [style.width.%]="r.fraction * 100" [style.background]="r.color"></i></div>
+            <span class="mono done">{{ r.done }}</span>
+          </div>
+          <div class="ago">{{ ago(r) }}</div>
+        }
+        <button type="button" class="more" title="More" aria-label="More actions" (click)="$event.stopPropagation(); menu($event, r)">
+          <app-icon name="more" [size]="16" />
+        </button>
+      </div>
+    }
+  </div>
+}

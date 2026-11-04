@@ -113,10 +113,12 @@ module.exports = defineConfig([
                 { element: { types: ['shared-kernel', 'shared-infrastructure', 'contracts'] } },
               ].map((to) => ({ to })),
             },
+            // ui may use any context's application public API (Home shows catalogue + library,
+            // the player reads library progress, …) but only its own context's ui.
             {
               from: { element: { type: 'ui' } },
               allow: [
-                sameContext('application'),
+                { element: { type: 'application' } },
                 sameContext('ui'),
                 { element: { types: ['shared-ui', 'shared-kernel'] } },
               ].map((to) => ({ to })),

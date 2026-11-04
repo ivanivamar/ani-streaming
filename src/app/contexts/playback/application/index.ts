@@ -5,4 +5,14 @@
  * context's domain/, infrastructure/ or ui/.
  */
 export { PlaybackStore, type PlayableEpisode } from './playback.store';
-export { codecString, VideoSourcePort, type DriveVideo } from '../domain';
+export {
+  CAPTION_LABEL,
+  captionModes,
+  captionTrack,
+  codecString,
+  initialCaption,
+  skippableChapter,
+  VideoSourcePort,
+  type CaptionMode,
+  type DriveVideo,
+} from '../domain';

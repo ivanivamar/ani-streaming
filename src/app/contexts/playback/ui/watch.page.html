@@ -1,0 +1,242 @@
+@let p = playable.value();
+
+@if (p?.src; as src) {
+  <video
+    #video
+    [src]="src"
+    preload="metadata"
+    playsinline
+    (loadedmetadata)="onLoaded()"
+    (timeupdate)="onTime()"
+    (progress)="onTime()"
+    (play)="onPlay()"
+    (pause)="onPause()"
+    (waiting)="waiting.set(true)"
+    (playing)="waiting.set(false)"
+    (canplay)="waiting.set(false)"
+    (seeked)="flush()"
+    (ended)="onEnded()"
+    (error)="onError()"
+  ></video>
+}
+<button type="button" class="surface" aria-label="Play / pause" (click)="togglePlay()" (dblclick)="toggleFs()"></button>
+
+@if (playable.isLoading() || (p?.src && waiting() && !videoError())) {
+  <div class="spin" aria-label="Loading"><span></span></div>
+}
+
+@if (playable.error(); as error) {
+  <div class="error-card fatal" role="alert">
+    <h3>Could not open this episode</h3>
+    <p>{{ error.message }}</p>
+    <div class="row">
+      <button type="button" class="btn btn-primary btn-sm" (click)="playable.reload()">Retry</button>
+      <button type="button" class="btn btn-outline btn-sm" (click)="leave()">Back to the series</button>
+    </div>
+  </div>
+} @else if (!playable.isLoading() && !p) {
+  <div class="error-card fatal" role="alert">
+    <h3>Episode not found</h3>
+    <p>There's no episode {{ episodeId() }} of "{{ seriesId() }}" in the catalogue.</p>
+    <button type="button" class="btn btn-outline btn-sm" (click)="leave()">Back</button>
+  </div>
+} @else if (p && !p.src) {
+  <div class="error-card fatal" role="alert">
+    <h3>Streaming is off on this page</h3>
+    <p>Playback needs the app's service worker. Use Chrome or Edge on https:// (or localhost) and reload once.</p>
+    <button type="button" class="btn btn-outline btn-sm" (click)="leave()">Back</button>
+  </div>
+} @else if (videoError(); as err) {
+  <div class="error-card fatal" role="alert">
+    <h3>Playback stopped</h3>
+    <p>{{ err }}</p>
+    <div class="row">
+      <button type="button" class="btn btn-primary btn-sm" (click)="playable.reload()">Try again</button>
+      <button type="button" class="btn btn-outline btn-sm" (click)="leave()">Back to the series</button>
+    </div>
+  </div>
+}
+
+<!-- top bar -->
+<div class="top chrome">
+  <button type="button" class="round back" title="Back" aria-label="Back" (click)="leave()">
+    <app-icon name="back" [size]="20" [stroke]="2" />
+  </button>
+  <div class="titles">
+    <div class="title">{{ series()?.title }}</div>
+    <div class="sub">{{ subLine() }}</div>
+  </div>
+</div>
+
+<!-- touch: transport in the centre -->
+@if (touchLayout() && p?.src && !videoError()) {
+  <div class="center chrome">
+    <button type="button" class="round big-skip" title="Back 10s" aria-label="Back 10 seconds" (click)="skip(-10)">
+      <ng-container *ngTemplateOutlet="rewind" />
+    </button>
+    <button type="button" class="play big" title="Play / pause" [attr.aria-label]="playing() ? 'Pause' : 'Play'" (click)="togglePlay()">
+      <app-icon [name]="playing() ? 'pause-fill' : 'play-fill'" [size]="26" [class.nudge]="!playing()" />
+    </button>
+    <button type="button" class="round big-skip" title="Forward 10s" aria-label="Forward 10 seconds" (click)="skip(10)">
+      <ng-container *ngTemplateOutlet="forward" />
+    </button>
+  </div>
+}
+
+@if (skipChapter(); as ch) {
+  <button type="button" class="skip-chapter" (click)="skipNow()">
+    {{ ch.kind === 'op' ? 'Skip opening' : 'Skip ending' }}<app-icon name="skip" [size]="15" [stroke]="1.8" />
+  </button>
+}
+
+<!-- bottom controls -->
+<div class="controls chrome">
+  <div
+    class="scrub"
+    role="slider"
+    tabindex="0"
+    aria-label="Seek"
+    [attr.aria-valuemin]="0"
+    [attr.aria-valuemax]="duration()"
+    [attr.aria-valuenow]="time()"
+    [attr.aria-valuetext]="timeLabel()"
+    (pointerdown)="scrubStart($event)"
+    (pointermove)="scrubMove($event)"
+    (pointerup)="scrubEnd()"
+    (pointercancel)="scrubEnd()"
+    (keydown)="scrubKey($event)"
+  >
+    <div class="track"></div>
+    <div class="buf" [style.width.%]="duration() ? (buffered() / duration()) * 100 : 0"></div>
+    <div class="fill" [style.width.%]="pct()"></div>
+    @for (c of ep()?.chapters ?? []; track c.startSec) {
+      @if (c.startSec > 0 && duration()) {
+        <i class="tick" [style.left.%]="(c.startSec / duration()) * 100"></i>
+      }
+    }
+    <div class="knob" [style.left.%]="pct()"></div>
+  </div>
+
+  <div class="row-ctl">
+    @if (!touchLayout()) {
+      <button type="button" class="play" title="Play / pause (k)" [attr.aria-label]="playing() ? 'Pause' : 'Play'" (click)="togglePlay()">
+        <app-icon [name]="playing() ? 'pause-fill' : 'play-fill'" [size]="18" [class.nudge]="!playing()" />
+      </button>
+      <button type="button" class="round" title="Back 10s (j)" aria-label="Back 10 seconds" (click)="skip(-10)">
+        <ng-container *ngTemplateOutlet="rewind" />
+      </button>
+      <button type="button" class="round" title="Forward 10s (l)" aria-label="Forward 10 seconds" (click)="skip(10)">
+        <ng-container *ngTemplateOutlet="forward" />
+      </button>
+    }
+    <div class="time mono">{{ timeLabel() }}</div>
+
+    <div class="cc-wrap">
+      <button
+        type="button"
+        class="round"
+        [class.on]="cc() !== 'off'"
+        [class.open]="ccOpen()"
+        title="Subtitles (c)"
+        [attr.aria-label]="'Subtitles: ' + ccLabel[cc()]"
+        [attr.aria-expanded]="ccOpen()"
+        (click)="ccOpen.set(!ccOpen()); popupOpen.set(false)"
+      >
+        <app-icon name="cc" [size]="20" [stroke]="1.8" />
+      </button>
+      @if (ccOpen()) {
+        <div class="cc-menu" role="menu">
+          <div class="eyebrow">Subtitles</div>
+          @for (m of ccModes(); track m) {
+            <button type="button" role="menuitemradio" [attr.aria-checked]="cc() === m" (click)="setCc(m)">
+              <span>{{ ccLabel[m] }}</span>
+              @if (cc() === m) {
+                <app-icon name="check" [size]="15" [stroke]="2.6" class="check" />
+              }
+            </button>
+          }
+        </div>
+      }
+    </div>
+    @if (next(); as n) {
+      <button type="button" class="round" title="Next episode (n)" aria-label="Next episode" (click)="goEpisode(n)">
+        <app-icon name="next" [size]="18" />
+      </button>
+    }
+    @if (episodes().length > 1) {
+      <button type="button" class="round" [class.open]="popupOpen()" title="Episodes" aria-label="Episodes" [attr.aria-expanded]="popupOpen()" (click)="togglePopup()">
+        <app-icon name="episodes" [size]="20" />
+      </button>
+    }
+    <button type="button" class="round" [title]="fs() ? 'Exit full screen (f)' : 'Full screen (f)'" [attr.aria-label]="fs() ? 'Exit full screen' : 'Full screen'" (click)="toggleFs()">
+      <app-icon [name]="fs() ? 'fullscreen-exit' : 'fullscreen'" [size]="18" [stroke]="1.8" />
+    </button>
+  </div>
+</div>
+
+@if (popupOpen()) {
+  <div class="pop-scrim" (click)="popupOpen.set(false)" aria-hidden="true"></div>
+  <div class="popup" role="dialog" aria-label="Episodes">
+    <div class="pop-head">
+      <div class="pop-titles">
+        <div class="pop-title">Episodes</div>
+        <div class="pop-sub mono">{{ popupSub() }}</div>
+      </div>
+      <button type="button" class="pop-close" title="Close" aria-label="Close" (click)="popupOpen.set(false)">
+        <app-icon name="close" [size]="12" [stroke]="2.2" />
+      </button>
+    </div>
+    @if (popupSeasons().length > 1) {
+      <div class="tabs scroll-x">
+        @for (s of popupSeasons(); track s.number) {
+          <button type="button" class="tab" [class.on]="popupSeason() === s.number" (click)="popupSeason.set(s.number)">
+            {{ s.name }}
+            @if (s.number === ep()?.season) {
+              <span class="tab-dot"></span>
+            }
+          </button>
+        }
+      </div>
+    }
+    <div class="rows">
+      @for (r of popupRows(); track r.ep.id) {
+        <button type="button" class="ep-row" [class.current]="r.current" (click)="r.current ? popupOpen.set(false) : goEpisode(r.ep)">
+          <div class="thumb" [style.background]="r.gradient">
+            @if (r.thumb) {
+              <img [src]="r.thumb" alt="" loading="lazy" (error)="$any($event.target).remove()" />
+            }
+            @if (r.watched) {
+              <div class="dim"></div>
+            }
+            <span class="n" [class.done]="r.watched">{{ r.num }}</span>
+            @if (r.fraction > 0 && !r.watched) {
+              <div class="t-prog"><i [style.width.%]="r.fraction * 100"></i></div>
+            }
+          </div>
+          <div class="ep-text">
+            <div class="ep-title">{{ r.ep.title ? r.ep.number + '. ' + r.ep.title : 'Episode ' + r.ep.number }}</div>
+            <div class="ep-sub" [class.now]="r.current">{{ r.sub }}</div>
+          </div>
+          @if (r.current) {
+            <div class="eq" aria-hidden="true"><span></span><span></span><span></span></div>
+          }
+        </button>
+      }
+    </div>
+  </div>
+}
+
+<ng-template #rewind>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M12 5A8 8 0 1 1 4 13" />
+    <path d="M14.5 2.5 12 5l2.5 2.5" />
+    <text x="12" y="16.2" text-anchor="middle" font-family="Sora, sans-serif" font-size="6.6" font-weight="600" fill="#fff" stroke="none">10</text>
+  </svg>
+</ng-template>
+<ng-template #forward>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M12 5a8 8 0 1 0 8 8" />
+    <path d="M9.5 2.5 12 5 9.5 7.5" />
+    <text x="12" y="16.2" text-anchor="middle" font-family="Sora, sans-serif" font-size="6.6" font-weight="600" fill="#fff" stroke="none">10</text>
+  </svg>
+</ng-template>

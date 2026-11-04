@@ -1,8 +1,7 @@
 /**
- * library / domain — WatchProgress (watched >= threshold), LibraryEntry, resume rule.
- *
- * Pure TypeScript: no Angular, Firebase or RxJS imports (enforced by eslint-plugin-boundaries).
- * Ports (repository interfaces) are declared here or in application/ and implemented in
- * infrastructure/.
+ * library / domain — watch progress (watched ≥ threshold), library entries, favourites, recent
+ * searches, the resume rule. Pure TypeScript (enforced by eslint-plugin-boundaries).
  */
-export {};
+export * from './models';
+export * from './resume';
+export * from './user-data.repository';

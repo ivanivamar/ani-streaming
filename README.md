@@ -51,7 +51,7 @@ Path aliases: `@catalog/*`, `@playback/*`, `@library/*`, `@releases/*`, `@identi
 
 `eslint-plugin-boundaries` fails the lint when a rule is broken:
 
-- `ui` → own `application` and `ui`, `shared/ui`, `shared/kernel`.
+- `ui` → any context's `application` (public API), own `ui`, `shared/ui`, `shared/kernel`.
 - `application` → own `domain`, any context's `application`, `shared/kernel`.
 - `infrastructure` → own `domain` / `application` / `infrastructure`, `shared/kernel`,
   `shared/infrastructure`, `@ani/contracts`.

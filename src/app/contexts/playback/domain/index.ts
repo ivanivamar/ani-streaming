@@ -5,3 +5,4 @@
  * Pure TypeScript: no Angular, Firebase or RxJS imports (enforced by eslint-plugin-boundaries).
  */
 export * from './video-source';
+export * from './player-rules';

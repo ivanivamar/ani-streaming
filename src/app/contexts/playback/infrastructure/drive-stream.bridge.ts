@@ -51,6 +51,11 @@ export class DriveStreamBridge extends VideoSourcePort {
     return `${this.base}__drive/${encodeURIComponent(video.driveFileId)}?${q}`;
   }
 
+  imageUrl(driveFileId: string, mimeType = 'image/webp'): string | null {
+    if (!this.container?.controller) return null;
+    return `${this.base}__drive/${encodeURIComponent(driveFileId)}?${new URLSearchParams({ type: mimeType })}`;
+  }
+
   private listen(sw: ServiceWorkerContainer): void {
     sw.addEventListener('message', (e: MessageEvent) => {
       const type = (e.data as { type?: string } | null)?.type;

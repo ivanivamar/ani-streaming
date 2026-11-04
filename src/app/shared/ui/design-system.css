@@ -1,0 +1,555 @@
+/* ============================================================
+   ani.stream design system (v3). Source of truth for values:
+   design_handoff_anime_streaming/Anime Streaming v3.dc.html (inline styles win over README).
+   Surfaces are opaque; alpha only for hairlines, artwork overlays and player chrome.
+   ============================================================ */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --app-bg: #0a0b0d;
+  --panel-bg: #111216;
+  --surface: #16171b;
+  --surface-2: #1a1b1f;
+  --surface-hover: #1c1d22;
+  --surface-hover-2: #202126;
+  --menu-bg: #1c1d21;
+  --menu-hover: #27282d;
+  --menu-selected: #24252a;
+  --chip-dark: #121316;
+  --nav-mobile-bg: #0e0f12;
+  --today-bg: #141a17;
+  --success-bg: #16211b;
+  --code-bg: #0e0e10;
+
+  /* Lines */
+  --line-1: rgba(255, 255, 255, 0.06);
+  --line-2: rgba(255, 255, 255, 0.07);
+  --line-3: rgba(255, 255, 255, 0.08);
+  --line-4: rgba(255, 255, 255, 0.1);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --line-hover: rgba(255, 255, 255, 0.28);
+
+  /* Text */
+  --text: #ececee;
+  --text-2: #d8d8dc;
+  --text-2b: #c9c9cf;
+  --text-3: #a5a5ad;
+  --text-4: #8b8b93;
+  --text-5: #7a7a82;
+  --text-6: #61616a;
+  --text-6b: #5c5c64;
+  --text-7: #45454c;
+
+  /* Accent (mint) */
+  --accent: oklch(0.84 0.14 155);
+  --accent-hover: oklch(0.9 0.13 155);
+  --accent-text: oklch(0.86 0.13 155);
+  --accent-logo: oklch(0.82 0.14 155);
+  --accent-border: oklch(0.5 0.1 155);
+  --accent-partial: oklch(0.6 0.1 155);
+  --accent-tint: oklch(0.84 0.14 155 / 0.14);
+  --on-accent: #08110c;
+
+  /* Status */
+  --info: oklch(0.78 0.11 235);
+  --warn: oklch(0.7 0.12 75);
+  --danger: #ff9d9d;
+  --danger-dot: #ff7a7a;
+  --danger-armed: oklch(0.62 0.17 25);
+  --dropped: oklch(0.72 0.14 25);
+  --completed: #b9b9c0;
+
+  /* Type */
+  --font-sans: 'Sora', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Shadow */
+  --shadow-popover: 0 24px 48px rgba(0, 0, 0, 0.55);
+  --shadow-menu: 0 20px 44px rgba(0, 0, 0, 0.6);
+  --shadow-poster: 0 14px 34px -10px rgba(0, 0, 0, 0.6);
+  --shadow-hero: 0 24px 50px -16px rgba(0, 0, 0, 0.65);
+  --focus-ring: 0 0 0 4px oklch(0.84 0.14 155 / 0.12);
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* Layout */
+  --gutter: clamp(16px, 3vw, 40px);
+  --grid-poster: repeat(auto-fill, minmax(196px, 1fr));
+  --grid-gap: clamp(16px, 2.2vw, 28px);
+}
+
+@media (max-width: 759px) {
+  :root {
+    --grid-poster: repeat(auto-fill, minmax(150px, 1fr));
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--panel-bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: oklch(0.82 0.13 155);
+  text-decoration: none;
+}
+
+a:hover {
+  color: oklch(0.9 0.1 155);
+}
+
+input,
+button,
+select,
+textarea {
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid oklch(0.84 0.14 155 / 0.7);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #26262b;
+  border-radius: 8px;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- Typography helpers ---------- */
+
+.h-page {
+  margin: 0;
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.h-section {
+  margin: 0;
+  font-size: clamp(18px, 2.2vw, 22px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-6);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-6b);
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.kbd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-5);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s,
+    transform 0.15s;
+}
+
+.btn:disabled {
+  cursor: default;
+  background: var(--menu-selected);
+  color: var(--text-5);
+  border-color: transparent;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: var(--accent-hover);
+}
+
+.btn-outline {
+  background: transparent;
+  border-color: var(--line-strong);
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.btn-outline:not(:disabled):hover {
+  border-color: var(--line-hover);
+}
+
+.btn-quiet {
+  background: var(--menu-selected);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.btn-quiet:hover {
+  background: #2c2d33;
+}
+
+.btn-sm {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.btn-link {
+  padding: 4px;
+  border: none;
+  background: none;
+  color: var(--text-4);
+  font-size: 13px;
+}
+
+.btn-link:hover {
+  color: #fff;
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface-2);
+  color: var(--text-2b);
+  padding: 0;
+}
+
+.icon-btn:hover {
+  background: var(--menu-selected);
+  color: #fff;
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line-4);
+  background: var(--surface);
+  color: var(--text-2b);
+  font-size: 13px;
+  font-weight: 500;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    transform 0.15s;
+}
+
+.back-btn:hover {
+  background: var(--surface-hover-2);
+  color: var(--text);
+}
+
+.back-btn:active {
+  transform: scale(0.96);
+}
+
+/* ---------- Pills ---------- */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.pill:hover {
+  border-color: var(--line-hover);
+}
+
+.pill.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.pill-lg {
+  padding: 9px 18px;
+  font-size: 13.5px;
+}
+
+.pill-md {
+  padding: 8px 15px;
+  font-size: 13px;
+}
+
+.pill .n {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* Opaque chip on artwork (episode label, NEW, status) */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--chip-dark);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
+}
+
+.chip.new {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 500;
+}
+
+.genre {
+  padding: 5px 11px;
+  border: 1px solid var(--line-4);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+}
+
+/* ---------- Grids & layout ---------- */
+
+.poster-grid {
+  display: grid;
+  grid-template-columns: var(--grid-poster);
+  gap: var(--grid-gap);
+}
+
+.settings-group {
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  overflow: hidden;
+}
+
+.card {
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+}
+
+.empty {
+  padding: 60px 0;
+  text-align: center;
+  color: var(--text-6);
+  font-size: 14px;
+}
+
+.empty .hint {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  margin-top: 8px;
+  color: var(--text-7);
+}
+
+.notice-error {
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: #241a1b;
+  border: 1px solid oklch(0.6 0.13 25 / 0.45);
+  font-size: 13px;
+  color: #ffb3b3;
+}
+
+.error-card {
+  max-width: 560px;
+  margin: 40px auto;
+  padding: 26px;
+  background: var(--surface-2);
+  border: 1px solid rgba(255, 140, 140, 0.22);
+  border-radius: 14px;
+}
+
+.error-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.error-card h3::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger-dot);
+}
+
+.error-card p {
+  margin: 0 0 18px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+
+/* Loading skeletons: same geometry as the real thing, a slow shimmer. */
+.skeleton {
+  background: linear-gradient(90deg, #17181c 0%, #1d1e23 50%, #17181c 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 16px;
+}
+
+.scroll-x {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid #d6d6d6;
+  border-top-color: #1f1f1f;
+  animation: spin 0.8s linear infinite;
+}

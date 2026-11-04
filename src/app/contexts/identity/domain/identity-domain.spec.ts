@@ -67,3 +67,12 @@ describe('access policy', () => {
     expect(isAllowed('g1', undefined)).toBe(false);
   });
 });
+
+describe('prefs', () => {
+  it('fills defaults and drops invalid values', async () => {
+    const { withDefaults, DEFAULT_PREFS } = await import('./prefs');
+    expect(withDefaults(null)).toEqual(DEFAULT_PREFS);
+    expect(withDefaults({ subtitles: 'signs', watchedThreshold: 0.8 })).toMatchObject({ subtitles: 'signs', watchedThreshold: 0.8, autoplayNext: true });
+    expect(withDefaults({ watchedThreshold: 0.5 as never, subtitles: 'dub' as never }).watchedThreshold).toBe(0.9);
+  });
+});

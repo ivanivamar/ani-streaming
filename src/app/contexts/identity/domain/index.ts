@@ -8,3 +8,4 @@
 export * from './account';
 export * from './token-policy';
 export * from './access-policy';
+export * from './prefs';

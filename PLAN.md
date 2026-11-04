@@ -1,6 +1,6 @@
 # ani.stream — revival plan (rev. 3, Nov 3, 2026)
 
-**Status: Steps 0–3 done (Nov 3, 2026); next is Step 4 (UI to design v3), with 5/6 in parallel.** Replaces the allanime / ani-cli approach (blocked by
+**Status: Steps 0–3 done, Step 4 written (Nov 3, 2026; to check on Ivan's PC); next Steps 5/6.** Replaces the allanime / ani-cli approach (blocked by
 purpose-built anti-scraping, see `claude/known-issue-api-sources-cloudflare.md`) with a library
 Ivan owns: his own episodes, compressed with ffmpeg, stored on Google Drive, streamed with range
 requests. Same model as the music app (Material Music).
@@ -354,6 +354,37 @@ song "OP" at 22:36, which stays untagged).
 | Settings | identity | Signal Forms. Playback prefs, Data; Downloads section only on Android. |
 
 Still to design: loading skeletons, player error, empty home.
+
+### Result (Nov 3, 2026 — written, not yet checked on the PC)
+
+- **shared/ui**: `design-system.css` (all v3 tokens + utility classes: buttons, pill, chip, genre,
+  skeleton, error card), `Icon` (v3 rounded paths), `Pill`, `Segmented` and `Toggle` (Signal Forms
+  controls), `Dropdown` (fixed menu, flips, closes on scroll/Esc), `ContextMenu` service + host,
+  `Poster` (AniList cover via `NgOptimizedImage`, gradient placeholder), `PosterCard`, `Avatar`,
+  `Logo`, `GoogleG`, `Motion` + `[appStagger]` (page enter, stagger, back direction, poster →
+  player grow, leave player, auth → app), `Viewport` signals (760px, landscape phone, touch).
+- **shell**: lazy-loaded; inset sidebar (236/72px, railed state in localStorage), inset panel with
+  Waves background, header search (`/`, recent searches, 5 suggestions, live query on /search),
+  mobile bottom nav + profile popover. Route `data.depth` drives motion direction (App root).
+- **Screens**: Sign in, Welcome (Subtitles + Autoplay replace Audio/Quality), Home, Search
+  (Status + Genre pills), Anime detail (seasons, watched strip, episode tiles with Drive thumbs
+  through the worker and durations), Watch (full-screen, outside the shell: custom chrome, touch
+  layout, landscape compact, episodes popup with season tabs, **CC menu**, **Skip opening/ending**
+  from chapters + optional auto-skip, keys space/k j l ←→ f n c s, autoplay next, error cards),
+  Library (tabs, sort, grid/list), New releases (AniList week grid, now line, scope, premieres,
+  notify), Settings (Signal Forms prefs, export JSON, clear history, delete account data).
+  Loading skeletons, empty home and the player error are designed in the same language.
+- **Data pulled forward from Steps 5/6** (the screens need it): `library` context
+  (`LibraryStore`, `ProgressTracker` with the 10 s / pause / seek / leave rule, Firestore
+  repository for progress, library, favourites, recent searches), `identity` `PrefsStore` +
+  `users/{uid}` profile (first sign-in → Welcome via `requireProfile`), `releases` context (AniList
+  GraphQL schedule + premieres, `users/{uid}/notify`). Still Step 5: JASSUB subtitle rendering (the
+  CC choice is stored and passed on), AniSkip fallback. Still Step 6: rules tests in the emulator.
+- Lint change: `ui` may import **any** context's `application` public API (Home shows catalogue +
+  library, the player reads progress); `ui` → other contexts' `ui` is still blocked.
+- Contracts: `UserPrefs` gains `resume` and `watchedThreshold`.
+- Budgets: component styles warn at 8 kB (watch page CSS is ~7 kB). Initial bundle 990 kB.
+- `withViewTransitions()` removed: page motion is Web Animations (the spec's exact timings).
 
 ## Step 5 — Player (web)
 - `<video>` with Drive stream, JASSUB (deferred) with the series' fonts, chapter-based skip

@@ -1,96 +1,43 @@
-import { Component, computed, inject, input, resource } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { CatalogStore, type Episode } from '@catalog/application';
+import { Location } from '@angular/common';
+import { Component, computed, inject, input, linkedSignal, resource } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { CatalogStore, seasonName, STATUS_NAME, type Episode, type SeriesDetail } from '@catalog/application';
+import { LibraryStore } from '@library/application';
+import { PlaybackStore } from '@playback/application';
 import { formatDuration } from '@shared/kernel';
+import { ContextMenu, Icon, Motion, Pill, Poster, Stagger, thumbGradient } from '@shared/ui';
 
-/** Anime detail (functional version: seasons + episodes from Firestore). Designed in Step 4. */
+interface Tile {
+  readonly ep: Episode;
+  readonly num: string;
+  readonly fraction: number;
+  readonly watched: boolean;
+  readonly next: boolean;
+  readonly thumb: string | null;
+  readonly gradient: string;
+  readonly duration: string;
+  readonly label: string;
+}
+
+/**
+ * Anime detail (v3): back, hero (poster, title, year • status, genres, synopsis, Play/Resume,
+ * favourite), season pills, watched strip (one segment per episode) and the episode grid with
+ * real thumbnails and durations from Firestore/Drive. Up next = accent ring + badge.
+ */
 @Component({
   selector: 'app-anime-detail-page',
-  imports: [RouterLink],
-  template: `
-    <section class="page">
-      @if (detail.isLoading()) {
-        <p class="muted">Loading…</p>
-      } @else if (detail.error(); as error) {
-        <p class="error" role="alert">Could not load this series: {{ error.message }}</p>
-      } @else if (detail.value(); as d) {
-        <h1>{{ d.series.title }}</h1>
-        @if (d.series.synopsis) {
-          <p class="muted synopsis">{{ d.series.synopsis }}</p>
-        }
-        @for (group of seasons(); track group.season) {
-          <h2>Season {{ group.season }}</h2>
-          <ol class="episodes">
-            @for (ep of group.episodes; track ep.id) {
-              <li>
-                <a [routerLink]="['/watch', ep.seriesId, ep.id]">
-                  <span class="num">{{ ep.number }}</span>
-                  <span>{{ ep.title || 'Episode ' + ep.number }}</span>
-                  <span class="muted small">{{ duration(ep.durationSec) }}</span>
-                </a>
-              </li>
-            }
-          </ol>
-        }
-      } @else {
-        <h1>Not found</h1>
-        <p class="muted">There's no series "{{ seriesId() }}" in the catalogue.</p>
-      }
-    </section>
-  `,
-  styles: `
-    .page {
-      padding: 32px;
-      max-width: 900px;
-    }
-    h1 {
-      margin: 0 0 8px;
-      font-weight: 600;
-    }
-    h2 {
-      font-weight: 500;
-      margin: 24px 0 8px;
-    }
-    .synopsis {
-      max-width: 70ch;
-      line-height: 1.5;
-    }
-    .episodes {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: grid;
-      gap: 4px;
-    }
-    a {
-      display: grid;
-      grid-template-columns: 3ch 1fr auto;
-      gap: 12px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      color: inherit;
-      text-decoration: none;
-    }
-    a:hover {
-      background: rgb(255 255 255 / 0.06);
-    }
-    .num {
-      opacity: 0.6;
-      text-align: right;
-    }
-    .muted {
-      opacity: 0.6;
-    }
-    .small {
-      font-size: 0.85em;
-    }
-    .error {
-      color: #ff8a80;
-    }
-  `,
+  imports: [RouterLink, Icon, Pill, Poster, Stagger],
+  templateUrl: './anime-detail.page.html',
+  styleUrl: './anime-detail.page.css',
 })
 export class AnimeDetailPage {
   private readonly catalog = inject(CatalogStore);
+  protected readonly library = inject(LibraryStore);
+  private readonly playback = inject(PlaybackStore);
+  private readonly router = inject(Router);
+  private readonly location = inject(Location);
+  private readonly menus = inject(ContextMenu);
+  private readonly motion = inject(Motion);
 
   /** `anime/:seriesId` (route input binding) */
   readonly seriesId = input.required<string>();
@@ -100,15 +47,101 @@ export class AnimeDetailPage {
     loader: ({ params }) => this.catalog.seriesDetail(params),
   });
 
-  protected readonly seasons = computed(() => {
-    const groups = new Map<number, Episode[]>();
-    for (const ep of this.detail.value()?.episodes ?? []) {
-      groups.set(ep.season, [...(groups.get(ep.season) ?? []), ep]);
-    }
-    return [...groups].map(([season, episodes]) => ({ season, episodes }));
+  protected readonly statusName = STATUS_NAME;
+
+  protected readonly resume = computed(() => {
+    const d = this.detail.value();
+    return d ? this.library.resume(d.series.id, d.episodes) : null;
   });
 
-  protected duration(sec: number): string {
-    return formatDuration(sec);
+  /** season numbers present (from episodes, so a season without a doc still shows) */
+  protected readonly seasons = computed(() => {
+    const d = this.detail.value();
+    if (!d) return [];
+    const nums = [...new Set(d.episodes.map((e) => e.season))].sort((a, b) => a - b);
+    return nums.map((n) => ({ number: n, name: seasonName(n, d.seasons.find((s) => s.number === n)?.title) }));
+  });
+
+  protected readonly season = linkedSignal(() => this.resume()?.episode.season ?? this.seasons()[0]?.number ?? 1);
+
+  protected readonly tiles = computed<Tile[]>(() => {
+    const d = this.detail.value();
+    if (!d) return [];
+    const next = this.resume();
+    return d.episodes
+      .filter((e) => e.season === this.season())
+      .map((ep) => {
+        const fraction = this.library.fractionOf(d.series.id, ep.id);
+        return {
+          ep,
+          num: String(ep.number).padStart(2, '0'),
+          fraction,
+          watched: this.library.isEpisodeWatched(d.series.id, ep.id),
+          next: !!next && !next.finished && next.episode.id === ep.id,
+          thumb: this.playback.thumbUrl(ep.thumbDriveFileId),
+          gradient: thumbGradient(d.series.id, ep.number),
+          duration: ep.durationSec ? formatDuration(ep.durationSec) : '',
+          label: ep.title ? `Episode ${ep.number} · ${ep.title}` : `Episode ${ep.number}`,
+        };
+      });
+  });
+
+  protected readonly watchedCount = computed(() => this.tiles().filter((t) => t.watched).length);
+
+  protected readonly playLabel = computed(() => {
+    const r = this.resume();
+    if (!r) return 'Play';
+    if (r.finished) return 'Watch again';
+    return r.fresh || r.position === 0 ? `Play E${r.episode.number}` : `Resume E${r.episode.number}`;
+  });
+
+  protected back(): void {
+    // came from inside the app → go back (keeps the previous page's state); deep link → Home
+    if (this.router.lastSuccessfulNavigation()?.previousNavigation) this.location.back();
+    else void this.router.navigateByUrl('/');
+  }
+
+  protected launch(el: HTMLElement, gradient: string): void {
+    this.motion.rememberLaunch(el, gradient);
+  }
+
+  protected watchLink(d: SeriesDetail, ep: Episode): string[] {
+    return ['/watch', d.series.id, ep.id];
+  }
+
+  protected pct(f: number): string {
+    return `${Math.round(f * 100)}%`;
+  }
+
+  protected segColor(t: Tile): string {
+    return t.watched ? 'var(--accent)' : t.fraction > 0 ? 'var(--accent-partial)' : 'rgba(255,255,255,0.1)';
+  }
+
+  protected tileMenu(e: MouseEvent, d: SeriesDetail, t: Tile): void {
+    const sid = d.series.id;
+    this.menus.open(e, `${d.series.title} · E${t.ep.number}`, [
+      { label: t.fraction > 0 && !t.watched ? 'Resume' : 'Play', icon: 'play', run: () => this.router.navigate(this.watchLink(d, t.ep)) },
+      {
+        label: 'Start over',
+        icon: 'restart',
+        run: () => {
+          this.library.resetEpisode(sid, t.ep.id);
+          void this.router.navigate(this.watchLink(d, t.ep), { queryParams: { t: 0 } });
+        },
+      },
+      t.watched
+        ? { label: 'Mark as unwatched', icon: 'remove', separator: true, run: () => this.library.resetEpisode(sid, t.ep.id) }
+        : { label: 'Mark as watched', icon: 'check', separator: true, run: () => this.library.markWatched(sid, [t.ep], d.series.episodeCount) },
+      {
+        label: 'Mark previous as watched',
+        icon: 'check',
+        run: () =>
+          this.library.markWatched(
+            sid,
+            d.episodes.filter((x) => x.season < t.ep.season || (x.season === t.ep.season && x.number <= t.ep.number)),
+            d.series.episodeCount,
+          ),
+      },
+    ]);
   }
 }

@@ -1,0 +1,162 @@
+<div class="page">
+  <div class="top">
+    <div>
+      <h1 class="h-page title">New releases</h1>
+      <p class="summary">{{ summary() }}</p>
+    </div>
+    <app-segmented [options]="scopes" [(value)]="scope" />
+  </div>
+
+  <section>
+    <div class="week-head">
+      <h2 class="h-section grow">{{ week.value()?.title ?? '' }}</h2>
+      <span class="count">{{ range() }}</span>
+      <button type="button" class="square" title="Previous week" aria-label="Previous week" (click)="page(-1)">
+        <app-icon name="chevron-left" [size]="14" [stroke]="2.2" />
+      </button>
+      <button type="button" class="square" title="Next week" aria-label="Next week" (click)="page(1)">
+        <app-icon name="chevron-right" [size]="14" [stroke]="2.2" />
+      </button>
+    </div>
+
+    @if (week.error(); as error) {
+      <div class="error-card" role="alert">
+        <h3>Schedule unavailable</h3>
+        <p>AniList didn't answer: {{ error.message }}</p>
+        <button type="button" class="btn btn-primary btn-sm" (click)="week.reload()">Retry</button>
+      </div>
+    } @else {
+      <div class="clip">
+        @if (week.value(); as w) {
+          <div class="days" [class.from-left]="slide() === 'left'" [class.from-right]="slide() === 'right'" [attr.data-week]="w.offset">
+            @for (d of w.days; track d.date) {
+              @let today = isToday(d.date);
+              @let nowAt = nowIndex(d.date, d.items);
+              <div class="day" [class.today]="today">
+                <div class="day-head">
+                  <span class="day-name">{{ dayName(d.date) }}</span>
+                  <span class="day-date mono">{{ dateLabel(d.date) }}</span>
+                </div>
+                @for (it of d.items; track it.id; let i = $index) {
+                  @if (i === nowAt) {
+                    <ng-container *ngTemplateOutlet="nowLine" />
+                  }
+                  <div
+                    class="item"
+                    role="link"
+                    tabindex="0"
+                    [class.watched]="state(it) === 'watched'"
+                    (click)="open(it.match, it.anilistId)"
+                    (keydown.enter)="open(it.match, it.anilistId)"
+                  >
+                    <div class="it-top">
+                      <div class="thumb" [style.background]="bg(it.cover, it.anilistId)"></div>
+                      <div class="it-text">
+                        <div class="it-title">{{ it.title }}</div>
+                        <div class="it-meta mono">{{ meta(it) }}</div>
+                      </div>
+                    </div>
+                    <div class="it-status">
+                      <span class="dot sm" [style.background]="color(it)"></span>
+                      <span class="st" [style.color]="color(it)">{{ statusText(it) }}</span>
+                      @if (state(it) === 'upcoming') {
+                        <button
+                          type="button"
+                          class="bell"
+                          [class.on]="notifiedAiring(it)"
+                          [attr.aria-pressed]="notifiedAiring(it)"
+                          [title]="notifiedAiring(it) ? 'Notifying' : 'Notify me'"
+                          aria-label="Notify me"
+                          (click)="toggleAiring($event, it)"
+                        >
+                          <app-icon name="bell" [size]="14" [stroke]="1.8" [filled]="notifiedAiring(it)" />
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+                @if (nowAt === d.items.length && d.items.length) {
+                  <ng-container *ngTemplateOutlet="nowLine" />
+                }
+                @if (!d.items.length) {
+                  @if (today) {
+                    <ng-container *ngTemplateOutlet="nowLine" />
+                  }
+                  <div class="nothing">Nothing airing</div>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="days">
+            @for (i of [1, 2, 3, 4, 5, 6, 7]; track i) {
+              <div class="day skeleton"></div>
+            }
+          </div>
+        }
+      </div>
+    }
+    @if (trimNote(); as note) {
+      <div class="trim">
+        <span>{{ note.text }}</span>
+        <button type="button" class="btn-link trim-btn" (click)="showAll.set(!showAll())">{{ note.action }}</button>
+      </div>
+    }
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2 class="h-section">New seasons &amp; premieres</h2>
+      <span class="count">{{ premieres.value()?.length ?? '' }}</span>
+    </div>
+    @if (premieres.value(); as list) {
+      @if (list.length) {
+        <div class="prem-grid" appStagger>
+          @for (p of list; track p.anilistId) {
+            <div class="prem" role="link" tabindex="0" (click)="open(p.match, p.anilistId)" (keydown.enter)="open(p.match, p.anilistId)">
+              <div class="prem-poster" [style.background]="bg(p.cover, p.anilistId)"><div class="dots"></div></div>
+              <div class="prem-text">
+                <span class="tag" [class.up]="p.upcoming">{{ p.upcoming ? 'UPCOMING' : 'OUT NOW' }}</span>
+                <div class="prem-title">{{ p.title }}</div>
+                <div class="prem-kind">{{ p.kind }}{{ p.match ? ' · in your library' : '' }}</div>
+                <div class="grow"></div>
+                <div class="prem-foot">
+                  <span class="when" [class.up]="p.upcoming">{{ when(p) }}</span>
+                  @if (p.upcoming) {
+                    <button
+                      type="button"
+                      class="notify"
+                      [class.on]="notifiedPremiere(p)"
+                      [attr.aria-pressed]="notifiedPremiere(p)"
+                      (click)="togglePremiere($event, p)"
+                    >
+                      <app-icon name="bell" [size]="14" [stroke]="1.8" [filled]="notifiedPremiere(p)" />{{ notifiedPremiere(p) ? 'On' : 'Notify me' }}
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="empty">Nothing new starting{{ scope() === 'mine' ? ' from your library' : '' }}.</div>
+      }
+    } @else if (premieres.error()) {
+      <div class="empty">Couldn't load premieres from AniList.</div>
+    } @else {
+      <div class="prem-grid">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <div class="skeleton" style="height: 118px"></div>
+        }
+      </div>
+    }
+  </section>
+</div>
+
+<ng-template #nowLine>
+  <div class="now" aria-label="Now">
+    <span class="now-dot"></span>
+    <span class="now-line"></span>
+    <span class="now-time mono">{{ nowLabel() }}</span>
+  </div>
+</ng-template>

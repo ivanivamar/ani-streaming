@@ -1,4 +1,5 @@
 import type { Account, StoredSession } from '../domain';
+import type { UserDoc, UserPrefs } from '../domain';
 
 /**
  * Ports of the identity context. Abstract classes double as DI tokens; the implementations live
@@ -75,4 +76,13 @@ export abstract class FirebaseSessionPort {
 /** `config/access` allowlist. */
 export abstract class AccessPort {
   abstract isAllowed(uid: string): Promise<boolean>;
+}
+
+/** `users/{uid}`: profile + prefs. `get` is null for a first sign-in (→ Welcome). */
+export abstract class UserProfilePort {
+  abstract get(uid: string): Promise<UserDoc | null>;
+  abstract create(uid: string, doc: UserDoc): Promise<void>;
+  abstract updatePrefs(uid: string, prefs: UserPrefs): Promise<void>;
+  /** Deletes `users/{uid}` and everything under it (Settings → Delete account data). */
+  abstract deleteAll(uid: string): Promise<void>;
 }
